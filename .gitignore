@@ -1,32 +1,93 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
 # Logs
-logs
 *.log
+*.out
+*.pid
+*.seed
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-.output
-.vinxi
-.tanstack/**
-.nitro
-*.local
+# Environment/secrets
+.env
+.env.*
+!.env.example
+!.env.sample
 
-# Wrangler / Cloudflare
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+.python-version
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+pip-wheel-metadata/
+build/
+dist/
+site/
+*.egg-info/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Node/Bun/web
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.turbo/
+.cache/
+.vite/
+.tanstack/
+coverage/
+dist/
+*.tsbuildinfo
+
+# Framework/runtime caches
+.next/
+.nuxt/
+.svelte-kit/
 .wrangler/
-.dev.vars
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Dependency locks generated locally (uncomment if you choose to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+# bun.lockb
+# poetry.lock
+# Pipfile.lock
+
+# AWS CDK / infra artifacts
+src/infra/cdk.out/
+
+# Local databases and temp data
+*.sqlite
+*.sqlite3
+*.db
+tmp/
+temp/
+
