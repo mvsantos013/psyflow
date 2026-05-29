@@ -21,8 +21,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAddTarefa, type NovaTarefaInput } from "@/hooks/use-prontuario";
 import { useExercicios } from "@/hooks/use-exercicios";
-import type { ExercicioTemplate } from "@/lib/mock-data";
 import { toast } from "sonner";
+import type { ExercicioTemplate } from "@/lib/ui-types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

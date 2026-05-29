@@ -1,21 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Prontuario, TarefaPrescrita, Sessao } from "@/lib/mock-data";
+import {
+  normalizePatientRecord,
+  normalizeSession,
+  normalizeTask,
+  toApiSessionType,
+  toApiTaskType,
+} from "@/lib/api-normalizers";
 import { apiFetch } from "@/lib/api";
+import type { Prontuario, TarefaPrescrita, Sessao } from "@/lib/ui-types";
 
-type ProntuarioComResumo = Prontuario & {
-  resumoGeral: NonNullable<Prontuario["resumoGeral"]> | null;
-};
+type ProntuarioComResumo = Prontuario;
 
 async function fetchProntuario(id: string): Promise<ProntuarioComResumo> {
   const res = await apiFetch(`/api/patients/${id}/record`);
   if (!res.ok) throw new Error("Prontuário não encontrado");
-  return res.json();
+  const data = await res.json();
+  return normalizePatientRecord(data);
 }
 
 async function fetchTarefas(id: string): Promise<TarefaPrescrita[]> {
   const res = await apiFetch(`/api/patients/${id}/tasks`);
   if (!res.ok) throw new Error("Tarefas não encontradas");
-  return res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? data.map(normalizeTask) : [];
 }
 
 export function useProntuario(pacienteId: string) {
@@ -55,10 +62,18 @@ async function postNovaSessao(pacienteId: string, input: NovaSessaoInput): Promi
   const res = await apiFetch(`/api/patients/${pacienteId}/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      date: input.data,
+      type: toApiSessionType(input.tipo),
+      duration: input.duracao,
+      moodStart: input.humorInicio,
+      moodEnd: input.humorFim,
+      summary: input.resumo,
+    }),
   });
   if (!res.ok) throw new Error("Erro ao criar sessão");
-  return res.json();
+  const data = await res.json();
+  return normalizeSession(data);
 }
 
 /**
@@ -80,10 +95,15 @@ async function postNovaTarefa(pacienteId: string, input: NovaTarefaInput): Promi
   const res = await apiFetch(`/api/patients/${pacienteId}/tasks`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      title: input.titulo,
+      description: input.descricao,
+      type: toApiTaskType(input.tipo),
+    }),
   });
   if (!res.ok) throw new Error("Erro ao criar tarefa");
-  return res.json();
+  const data = await res.json();
+  return normalizeTask(data);
 }
 
 export function useAddTarefa(pacienteId: string) {

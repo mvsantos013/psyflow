@@ -34,29 +34,24 @@ If `uv.lock` is already committed and you want strict reproducibility:
 uv sync --frozen
 ```
 
-3. Configure runtime environment variables:
+3. Create local environment file from template:
 
 ```bash
-export STAGE=dev
-export PATIENTS_TABLE_NAME=psyflow-patients-dev
-export SESSIONS_TABLE_NAME=psyflow-patient-sessions-dev
-export MOOD_TABLE_NAME=psyflow-patient-mood-dev
-export TASKS_TABLE_NAME=psyflow-patient-tasks-dev
-export CHAT_TABLE_NAME=psyflow-patient-chat-dev
-export EXERCISES_TABLE_NAME=psyflow-exercises-dev
-
-# Optional, required for upload/transcription features
-export TRANSCRIPTIONS_BUCKET_NAME=<bucket-name>
-export AUDIO_UPLOADS_BUCKET_NAME=<bucket-name>
+cp .env.example .env
 ```
+
+Update `.env` values as needed for your stage/account.
+
+For AWS credentials, set `AWS_PROFILE` only when you use a named local profile (for example `default`); otherwise leave it unset.
 
 If `STAGE` is not set, backend defaults to `dev`.
 
-4. Provide AWS credentials for boto3 access:
+4. Load environment variables in your shell:
 
 ```bash
-export AWS_PROFILE=<your-profile>
-export AWS_REGION=us-east-1
+set -a
+source .env
+set +a
 ```
 
 5. Run the backend locally:

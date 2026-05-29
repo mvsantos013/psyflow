@@ -1,29 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
+import { normalizeAgendaEntry, normalizeTranscription } from "@/lib/api-normalizers";
 import { apiFetch } from "@/lib/api";
-
-export type AgendaEntry = {
-  diaOffset: number;
-  hora: number;
-  pacienteId: string;
-  tipo: "remota" | "presencial";
-};
-
-type TranscricaoResult = {
-  resumo: string;
-  insights: string[];
-  tarefas: string[];
-};
+import type { AgendaEntry, TranscricaoResult } from "@/lib/ui-types";
 
 async function fetchAgendaSessoes(): Promise<AgendaEntry[]> {
   const res = await apiFetch("/api/sessions/agenda");
   if (!res.ok) throw new Error("Falha ao buscar agenda");
-  return res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? data.map(normalizeAgendaEntry) : [];
 }
 
 async function fetchTranscricao(pacienteId: string): Promise<TranscricaoResult> {
   const res = await apiFetch(`/api/patients/${pacienteId}/transcription`);
   if (!res.ok) throw new Error("Transcrição não encontrada");
-  return res.json();
+  const data = await res.json();
+  return normalizeTranscription(data);
 }
 
 export function useAgendaSessoes() {

@@ -7,6 +7,8 @@ from asgiref.wsgi import WsgiToAsgi
 from controllers.agenda_controller import create_agenda_blueprint
 from controllers.chat_controller import create_chat_blueprint
 from controllers.exercise_controller import create_exercise_blueprint
+from controllers.organization_controller import OrganizationController
+from controllers.organization_controller import create_organization_blueprint
 from controllers.mood_controller import create_mood_blueprint
 from controllers.patient_controller import create_patient_blueprint
 from controllers.patient_controller import PatientController
@@ -17,8 +19,10 @@ from controllers.upload_controller import create_upload_blueprint
 from core.auth import extract_auth_context as _extract_auth_context
 from core.auth import extract_claims as _extract_claims
 from core.auth import extract_org_id as _extract_org_id
+from core.auth import extract_role as _extract_role
 from core.auth import extract_user_sub as _extract_user_sub
 from core.auth import require_write_role as _require_write_role
+from core.auth import require_super_admin as _require_super_admin
 from core.exceptions import RateLimitedError
 from core.exceptions import RateLimitPolicyError
 from core.dates import now_iso as _now_iso
@@ -39,6 +43,7 @@ from core.validation import require_int as _require_int
 from core.validation import require_string as _require_string
 from core.validation import validate_json_schema as _validate_json_schema
 from flask import Flask
+from flask import request
 from mangum import Mangum
 from middleware.auth_context import setup_auth_context
 from middleware.error_handlers import register_error_handlers
@@ -46,6 +51,7 @@ from middleware.request_logging import setup_request_logging
 from repositories.chat_repository import ChatRepository
 from repositories.exercise_repository import ExerciseRepository
 from repositories.mood_repository import MoodRepository
+from repositories.organization_repository import OrganizationRepository
 from repositories.patient_repository import PatientRepository
 from repositories.session_repository import SessionRepository
 from repositories.task_repository import TaskRepository
@@ -53,6 +59,7 @@ from services.agenda_service import AgendaService
 from services.chat_service import ChatService
 from services.exercise_service import ExerciseService
 from services.mood_service import MoodService
+from services.organization_service import OrganizationService
 from services.patient_record_service import PatientRecordService
 from services.patient_service import PatientService
 from services.session_service import SessionService
@@ -86,13 +93,16 @@ _logger = logging.getLogger(f"psyflow.api.{_STAGE}")
 if not _logger.handlers:
     logging.basicConfig(level=logging.INFO)
 
+_raw_cors_origins = _optional_env("CORS_ALLOW_ORIGINS") or "http://localhost:8080,http://127.0.0.1:8080"
+_cors_allowed_origins = {origin.strip() for origin in _raw_cors_origins.split(",") if origin.strip()}
+
 _rate_limiter = InMemoryRateLimiter()
 
 
 def _build_patient_controller() -> PatientController:
     repository = PatientRepository(
         _dynamodb,
-        table_name=_env("PATIENTS_TABLE_NAME", "psyflow_patients"),
+        table_name=_env("PATIENTS_TABLE_NAME", f"psyflow-patients-{_STAGE}"),
     )
     service = PatientService(repository)
     return PatientController(service, json_ready=_json_ready, json_error=_json_error)
@@ -104,7 +114,7 @@ _patient_controller = _build_patient_controller()
 def _build_task_blueprint():
     repository = TaskRepository(
         _dynamodb,
-        table_name=_env("TASKS_TABLE_NAME", "psyflow_patient_tasks"),
+        table_name=_env("TASKS_TABLE_NAME", f"psyflow-patient_tasks-{_STAGE}"),
     )
     service = TaskService(
         repository,
@@ -121,7 +131,7 @@ def _build_task_blueprint():
 def _build_mood_blueprint():
     repository = MoodRepository(
         _dynamodb,
-        table_name=_env("MOOD_TABLE_NAME", "psyflow_patient_mood"),
+        table_name=_env("MOOD_TABLE_NAME", f"psyflow-patient_mood-{_STAGE}"),
     )
     service = MoodService(
         repository,
@@ -137,7 +147,7 @@ def _build_mood_blueprint():
 def _build_exercise_blueprint():
     repository = ExerciseRepository(
         _dynamodb,
-        table_name=_env("EXERCISES_TABLE_NAME", "psyflow_exercises"),
+        table_name=_env("EXERCISES_TABLE_NAME", f"psyflow-exercises-{_STAGE}"),
     )
     service = ExerciseService(
         repository,
@@ -150,10 +160,19 @@ def _build_exercise_blueprint():
     )
 
 
+def _build_organization_controller() -> OrganizationController:
+    repository = OrganizationRepository(
+        _dynamodb,
+        table_name=_env("ORGANIZATIONS_TABLE_NAME", f"psyflow-organizations-{_STAGE}"),
+    )
+    service = OrganizationService(repository, now_iso=_now_iso)
+    return OrganizationController(service, json_ready=_json_ready, json_error=_json_error)
+
+
 def _build_session_service() -> SessionService:
     repository = SessionRepository(
         _dynamodb,
-        table_name=_env("SESSIONS_TABLE_NAME", "psyflow_patient_sessions"),
+        table_name=_env("SESSIONS_TABLE_NAME", f"psyflow-patient-sessions-{_STAGE}"),
     )
     return SessionService(
         repository,
@@ -165,6 +184,7 @@ def _build_session_service() -> SessionService:
 
 
 _session_service = _build_session_service()
+_organization_controller = _build_organization_controller()
 
 
 def _build_session_blueprint():
@@ -188,7 +208,7 @@ def _build_upload_blueprint():
 def _build_chat_blueprint():
     repository = ChatRepository(
         _dynamodb,
-        table_name=_env("CHAT_TABLE_NAME", "psyflow_patient_chat"),
+        table_name=_env("CHAT_TABLE_NAME", f"psyflow-patient-chat-{_STAGE}"),
     )
     service = ChatService(repository)
     return create_chat_blueprint(
@@ -208,11 +228,11 @@ def _build_agenda_blueprint():
 def _build_patient_record_blueprint():
     patient_repository = PatientRepository(
         _dynamodb,
-        table_name=_env("PATIENTS_TABLE_NAME", "psyflow_patients"),
+        table_name=_env("PATIENTS_TABLE_NAME", f"psyflow-patients-{_STAGE}"),
     )
     mood_repository = MoodRepository(
         _dynamodb,
-        table_name=_env("MOOD_TABLE_NAME", "psyflow_patient_mood"),
+        table_name=_env("MOOD_TABLE_NAME", f"psyflow-patient-mood-{_STAGE}"),
     )
     mood_service = MoodService(
         mood_repository,
@@ -233,6 +253,13 @@ def _build_patient_record_blueprint():
 def _build_patient_blueprint():
     return create_patient_blueprint(
         patient_controller=_patient_controller,
+        deps=_deps,
+    )
+
+
+def _build_organization_blueprint():
+    return create_organization_blueprint(
+        organization_controller=_organization_controller,
         deps=_deps,
     )
 
@@ -288,8 +315,10 @@ _deps = ControllerDeps(
     json_error=_json_error,
     extract_org_id=_extract_org_id,
     extract_auth_context=_extract_auth_context,
+    extract_role=_extract_role,
     extract_user_sub=_extract_user_sub,
     require_write_role=_require_write_role,
+    require_super_admin=_require_super_admin,
     enforce_sensitive_rate_limit=_enforce_sensitive_rate_limit,
     validate_json_schema=_validate_json_schema,
     require_string=_require_string,
@@ -317,6 +346,20 @@ app.register_blueprint(_build_chat_blueprint())
 app.register_blueprint(_build_agenda_blueprint())
 app.register_blueprint(_build_patient_record_blueprint())
 app.register_blueprint(_build_patient_blueprint())
+app.register_blueprint(_build_organization_blueprint())
+
+
+@app.after_request
+def _apply_cors_headers(response):
+    origin = request.headers.get("Origin")
+    allow_any_origin = "*" in _cors_allowed_origins
+    if origin and (allow_any_origin or origin in _cors_allowed_origins):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+        response.headers["Access-Control-Allow-Methods"] = "GET,POST,PATCH,DELETE,OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Authorization,Content-Type"
+        response.headers["Access-Control-Max-Age"] = "600"
+    return response
 
 
 asgi_app = WsgiToAsgi(app)

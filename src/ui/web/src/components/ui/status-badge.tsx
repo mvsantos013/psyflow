@@ -1,4 +1,4 @@
-import type { Paciente } from "@/lib/mock-data";
+import type { Paciente } from "@/lib/ui-types";
 
 const STATUS_STYLES: Record<Paciente["status"], string> = {
   ativo: "bg-chart-2/10 text-chart-2",

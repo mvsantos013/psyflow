@@ -8,6 +8,7 @@ English-only API contract. No backward compatibility aliases are accepted in req
 - Content type: `application/json`
 - Auth: bearer token required for all endpoints
 - Write role required (`admin` or `therapist`) for POST/PATCH endpoints
+- Admin Control endpoints require `super_admin`
 - Error shape:
 
 ```json
@@ -38,10 +39,10 @@ Response 200:
 [
   {
     "id": "string",
-    "name": "string",
+### GET /api/admin/organizations
     "email": "string",
     "age": 0,
-    "treatmentStartDate": "YYYY-MM-DD",
+Response 200: organization object shape from GET /api/admin/organizations.
     "status": "active",
     "lastSession": "YYYY-MM-DD",
     "nextSession": "YYYY-MM-DD",
@@ -52,18 +53,17 @@ Response 200:
   }
 ]
 ```
-
+### POST /api/admin/organizations
 ### GET /patients/{patientId}
 
-Returns one patient.
+Response 201: organization object shape from GET /api/admin/organizations.
 
 Path params:
 - `patientId` (string, required)
 
-Response 200: same object shape as GET /patients item.
 
 Response 404:
-- `PATIENT_NOT_FOUND`
+Response 200: organization object shape from GET /api/admin/organizations.
 
 ### GET /patients/{patientId}/tasks
 
@@ -77,14 +77,14 @@ Response 200:
 
 ```json
 [
-  {
+Response 200: organization object shape from GET /api/admin/organizations.
     "id": "string",
     "patientId": "string",
     "title": "string",
     "description": "string",
     "type": "exercise",
     "status": "pending",
-    "prescribedAt": "YYYY-MM-DD",
+Response 200: organization object shape from GET /api/admin/organizations.
     "completedAt": "YYYY-MM-DD"
   }
 ]
@@ -294,6 +294,76 @@ Error codes:
 - `ROLE_FORBIDDEN`
 - `RATE_LIMITED`
 - `BAD_REQUEST`
+
+### GET /admin/organizations
+
+Returns all organizations.
+
+Response 200:
+
+```json
+[
+  {
+    "id": "string",
+    "name": "string",
+    "slug": "string",
+    "status": "active",
+    "createdAt": "string",
+    "updatedAt": "string",
+    "deletedAt": null,
+    "deletedBy": null
+  }
+]
+```
+
+### POST /admin/organizations
+
+Body:
+
+```json
+{
+  "name": "string",
+  "slug": "string"
+}
+```
+
+Response 201: organization object shape from GET /admin/organizations.
+
+Error codes:
+- `ROLE_FORBIDDEN`
+- `BAD_REQUEST`
+- `ORGANIZATION_CONFLICT`
+
+### GET /admin/organizations/{organizationId}
+
+Path params:
+- `organizationId` (string, required)
+
+Response 200: organization object shape from GET /admin/organizations.
+
+Response 404:
+- `ORGANIZATION_NOT_FOUND`
+
+### PATCH /admin/organizations/{organizationId}
+
+Body:
+
+```json
+{
+  "name": "string",
+  "slug": "string"
+}
+```
+
+At least one field is required.
+
+Response 200: organization object shape from GET /admin/organizations.
+
+### DELETE /admin/organizations/{organizationId}
+
+Soft-deletes the organization by marking it archived.
+
+Response 200: organization object shape from GET /admin/organizations.
 
 ### PATCH /sessions/{sessionId}
 

@@ -136,6 +136,16 @@ class PsyflowStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
+        organizations_table = dynamodb.Table(
+            self,
+            "OrganizationsTable",
+            table_name=_name("psyflow-organizations"),
+            partition_key=dynamodb.Attribute(name="PK", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="SK", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
         if transcriptions_bucket_name:
             transcriptions_bucket = s3.Bucket.from_bucket_name(
                 self,
@@ -180,6 +190,7 @@ class PsyflowStack(Stack):
                 "TASKS_TABLE_NAME": tasks_table.table_name,
                 "CHAT_TABLE_NAME": chat_table.table_name,
                 "EXERCISES_TABLE_NAME": exercises_table.table_name,
+                "ORGANIZATIONS_TABLE_NAME": organizations_table.table_name,
                 "TRANSCRIPTIONS_BUCKET_NAME": effective_transcriptions_bucket_name,
                 "AUDIO_UPLOADS_BUCKET_NAME": effective_transcriptions_bucket_name,
             },
@@ -192,6 +203,7 @@ class PsyflowStack(Stack):
         tasks_table.grant_read_write_data(api_lambda)
         chat_table.grant_read_data(api_lambda)
         exercises_table.grant_read_write_data(api_lambda)
+        organizations_table.grant_read_write_data(api_lambda)
 
         transcriptions_bucket.grant_read_write(api_lambda)
 
@@ -241,6 +253,7 @@ class PsyflowStack(Stack):
         CfnOutput(self, "TasksTableName", value=tasks_table.table_name)
         CfnOutput(self, "ChatTableName", value=chat_table.table_name)
         CfnOutput(self, "ExercisesTableName", value=exercises_table.table_name)
+        CfnOutput(self, "OrganizationsTableName", value=organizations_table.table_name)
         CfnOutput(self, "TranscriptionsBucketName", value=effective_transcriptions_bucket_name)
         CfnOutput(self, "UserPoolId", value=user_pool.user_pool_id)
         CfnOutput(self, "UserPoolArn", value=user_pool.user_pool_arn)

@@ -1,11 +1,5 @@
-import {
-  Brain,
-  Home,
-  Shield,
-  Users,
-} from "lucide-react";
+import { Building2, LayoutDashboard, Shield } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useMemo } from "react";
 
 import {
   Sidebar,
@@ -18,67 +12,51 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/lib/auth-context";
 
-const mainItems = [
-  { title: "Visão Geral", url: "/dashboard", icon: Home },
-  { title: "Pacientes", url: "/dashboard/pacientes", icon: Users },
+const adminItems = [
+  { title: "Organizações", url: "/dashboard/admin", icon: Building2 },
 ];
 
-const secondaryItems = [
-  { title: "Exercícios", url: "/dashboard/exercicios", icon: Brain },
-  { title: "Admin Control", url: "/dashboard/admin", icon: Shield },
+const supportItems = [
+  { title: "Painel principal", url: "/dashboard", icon: LayoutDashboard },
 ];
 
-export function DashboardSidebar() {
+export function AdminSidebar() {
   const { state } = useSidebar();
-  const { session } = useAuth();
   const collapsed = state === "collapsed";
   const currentPath = useRouterState({
     select: (router) => router.location.pathname,
   });
 
-  const filteredSecondaryItems = useMemo(() => {
-    if (session?.user.role === "super_admin") {
-      return secondaryItems;
-    }
-    return secondaryItems.filter((item) => item.url !== "/dashboard/admin");
-  }, [session?.user.role]);
-
-  const isActive = (path: string) => {
-    if (path === "/dashboard") return currentPath === "/dashboard";
-    return currentPath.startsWith(path);
-  };
+  const isActive = (path: string) => currentPath === path || currentPath.startsWith(`${path}/`);
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="flex items-center gap-2 px-4 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Brain className="h-4 w-4" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background">
+            <Shield className="h-4 w-4" />
           </div>
           {!collapsed && (
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              PsyFlow
-            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold tracking-tight text-foreground">Admin Control</div>
+              <div className="text-xs text-muted-foreground">Organizações e permissões</div>
+            </div>
           )}
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
+          <SidebarGroupLabel>Administração</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
+              {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.url)}
                     tooltip={collapsed ? item.title : undefined}
                   >
-                    <Link
-                      to={item.url}
-                      className="flex items-center gap-2"
-                    >
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
                     </Link>
@@ -90,20 +68,17 @@ export function DashboardSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Ferramentas</SidebarGroupLabel>
+          <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredSecondaryItems.map((item) => (
+              {supportItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.url)}
                     tooltip={collapsed ? item.title : undefined}
                   >
-                    <Link
-                      to={item.url}
-                      className="flex items-center gap-2"
-                    >
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
                     </Link>

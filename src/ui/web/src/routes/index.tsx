@@ -28,12 +28,12 @@ function LandingPage() {
               PsyFlow
             </span>
           </div>
-          <Link to="/dashboard">
+          <a href="/login">
             <Button variant="outline" className="gap-2">
-              Acessar Dashboard
+              Entrar
               <ArrowRight className="h-4 w-4" />
             </Button>
-          </Link>
+          </a>
         </div>
       </header>
 
@@ -49,12 +49,12 @@ function LandingPage() {
             gráficos de humor e transcrição de sessões por IA.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link to="/dashboard">
+            <a href="/login">
               <Button size="lg" className="gap-2 px-8">
-                Entrar no Dashboard
+                Entrar no painel
                 <ArrowRight className="h-4 w-4" />
               </Button>
-            </Link>
+            </a>
           </div>
         </section>
 
@@ -117,7 +117,7 @@ function LandingPage() {
 
       <footer className="border-t bg-card">
         <div className="mx-auto max-w-7xl px-4 py-6 text-center text-sm text-muted-foreground">
-          PsyFlow — Dashboard para Psicólogos. Versão demonstrativa com dados mockados.
+          PsyFlow - Dashboard para Psicologos.
         </div>
       </footer>
     </div>

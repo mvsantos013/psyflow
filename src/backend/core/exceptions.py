@@ -42,3 +42,13 @@ class RateLimitedError(DomainError):
 class RateLimitPolicyError(DomainError):
     def __init__(self):
         super().__init__(status_code=403, error_code="RATE_LIMIT_POLICY_INVALID", message="forbidden")
+
+
+class OrganizationNotFoundError(DomainError):
+    def __init__(self):
+        super().__init__(status_code=404, error_code="ORGANIZATION_NOT_FOUND", message="organization not found")
+
+
+class OrganizationConflictError(DomainError):
+    def __init__(self):
+        super().__init__(status_code=409, error_code="ORGANIZATION_CONFLICT", message="organization already exists")

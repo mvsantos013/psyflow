@@ -30,7 +30,7 @@ import {
 import { toast } from "sonner";
 
 export function TranscricaoView() {
-  const [pacienteId, setPacienteId] = useState<string>("p1");
+  const [pacienteId, setPacienteId] = useState<string>("");
   const [sessaoId, setSessaoId] = useState<string>("");
   const [status, setStatus] = useState<
     "idle" | "uploading" | "processing" | "done"
@@ -50,6 +50,12 @@ export function TranscricaoView() {
     [prontuario]
   );
   const { data: transcricao } = useTranscricao(pacienteId, status === "done");
+
+  useEffect(() => {
+    if (!pacienteId && pacientesAtivos.length > 0) {
+      setPacienteId(pacientesAtivos[0].id);
+    }
+  }, [pacienteId, pacientesAtivos]);
 
   useEffect(() => {
     if (!sessaoId && sessoesOrdenadas.length > 0) {

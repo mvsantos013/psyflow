@@ -55,6 +55,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import type { Prontuario as UiProntuario, Sessao as UiSessao } from "@/lib/ui-types";
 
 type Abordagem = "tcc" | "psicanalise" | "sistemica" | "humanista";
 
@@ -674,7 +675,7 @@ type SinteseEditavel = {
   pontos: string;
 };
 
-type ResumoGeral = NonNullable<import("@/lib/mock-data").Prontuario["resumoGeral"]>;
+type ResumoGeral = NonNullable<UiProntuario["resumoGeral"]>;
 
 function SinteseClinica({
   pacienteId,
@@ -1030,12 +1031,13 @@ function ConclusoesProfAssistente({
   aba,
 }: {
   storageKey: string;
-  conclusoesIA: import("@/lib/mock-data").Sessao["conclusoesIA"];
+  conclusoesIA: UiSessao["conclusoesIA"];
   insights: string[];
   abordagem: Abordagem;
   setAbordagem: (a: Abordagem) => void;
   aba: "profissional" | "assistente";
 }) {
+  type ResumoGeral = NonNullable<UiProntuario["resumoGeral"]>;
   const [valor, setValor] = useLocalString(storageKey);
   const [editando, setEditando] = useState(false);
   const [rascunho, setRascunho] = useState("");

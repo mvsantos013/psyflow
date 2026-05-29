@@ -89,25 +89,17 @@ export function DashboardHome() {
       color: "bg-chart-2/10 text-chart-2",
     },
     {
-      label: "Tarefas Pendentes",
-      value: "6",
+      label: "Sessões na Semana",
+      value: sessoesSemana.length.toString(),
       icon: TrendingUp,
       color: "bg-chart-5/10 text-chart-5",
     },
     {
-      label: "Transcrições IA",
-      value: "3",
+      label: "Próximas Sessões",
+      value: proximasSessoes.length.toString(),
       icon: Mic,
       color: "bg-chart-3/10 text-chart-3",
     },
-  ];
-
-  const atividadeRecente = [
-    { texto: "Transcrição IA gerada — Ana Carolina", time: "Hoje, 10:32" },
-    { texto: "Diário atualizado — Marina Santos", time: "Hoje, 09:15" },
-    { texto: "Sessão finalizada — Ricardo Oliveira", time: "Ontem, 17:45" },
-    { texto: "Tarefa concluída — Ana Carolina", time: "Ontem, 14:20" },
-    { texto: "Novo paciente cadastrado — Felipe Costa", time: "22 Mai, 11:00" },
   ];
 
   const diasDaSemana = Array.from({ length: 7 }).map((_, i) => {
@@ -332,16 +324,8 @@ export function DashboardHome() {
       {/* Atividade Recente */}
       <div className="rounded-xl border bg-card p-6 shadow-sm">
         <h2 className="text-base font-semibold text-foreground">Atividade Recente</h2>
-        <div className="mt-4 space-y-3">
-          {atividadeRecente.map((a, i) => (
-            <div key={i} className="flex items-start gap-3 rounded-lg border p-3">
-              <div className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-foreground">{a.texto}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{a.time}</p>
-              </div>
-            </div>
-          ))}
+        <div className="mt-4 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+          A timeline de atividade ainda não foi conectada ao backend.
         </div>
       </div>
     </div>

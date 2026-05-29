@@ -9,7 +9,7 @@ from core.exceptions import OrgRequiredError
 from core.exceptions import RoleForbiddenError
 from core.exceptions import RoleRequiredError
 
-_KNOWN_ROLES = {"admin", "therapist", "assistant"}
+_KNOWN_ROLES = {"admin", "therapist", "assistant", "super_admin"}
 _WRITE_ROLES = {"admin", "therapist"}
 
 
@@ -85,6 +85,29 @@ def extract_auth_context() -> tuple[str, str]:
     return str(org_id), role
 
 
+def extract_role() -> str:
+    cached = getattr(g, "auth_role", None)
+    if isinstance(cached, str) and cached in _KNOWN_ROLES:
+        return cached
+
+    payload = extract_claims()
+
+    role = payload.get("custom:role")
+    if not role:
+        raise RoleRequiredError()
+    role = str(role)
+    if role not in _KNOWN_ROLES:
+        raise RoleForbiddenError()
+
+    g.auth_role = role
+    return role
+
+
 def require_write_role(role: str):
     if role not in _WRITE_ROLES:
+        raise RoleForbiddenError()
+
+
+def require_super_admin(role: str):
+    if role != "super_admin":
         raise RoleForbiddenError()

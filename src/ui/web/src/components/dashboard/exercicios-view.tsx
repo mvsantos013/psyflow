@@ -20,8 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useExercicios, useAddExercicio, type NovoExercicioInput } from "@/hooks/use-exercicios";
-import type { ExercicioTemplate } from "@/lib/mock-data";
 import { toast } from "sonner";
+import type { ExercicioTemplate } from "@/lib/ui-types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

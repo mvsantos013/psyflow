@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { toApiSessionType } from "@/lib/api-normalizers";
 import { withRetry } from "@/lib/retry";
 
 type SessionPatchPayload = {
@@ -67,10 +68,10 @@ export async function ensureSessionForPatient(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          data: today,
-          tipo: "remota",
-          duracao: 50,
-          resumo: "Sessão criada automaticamente para fluxo de transcrição.",
+          date: today,
+          type: toApiSessionType("remota"),
+          duration: 50,
+          summary: "Sessão criada automaticamente para fluxo de transcrição.",
         }),
       }),
     { stepLabel: "Falha ao criar sessão para upload" }

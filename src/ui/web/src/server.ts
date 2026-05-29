@@ -68,13 +68,6 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    // Route /api/* to the Hono API handler before delegating to TanStack SSR
-    const url = new URL(request.url);
-    if (url.pathname.startsWith("/api/")) {
-      const { apiRouter } = await import("./mock-api/router");
-      return apiRouter.fetch(request, env as Record<string, unknown>);
-    }
-
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

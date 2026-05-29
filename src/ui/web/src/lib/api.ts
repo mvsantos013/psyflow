@@ -1,3 +1,5 @@
+import { getValidIdToken, refreshSession } from "@/lib/auth";
+
 const rawBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
 
 const API_BASE_URL = rawBaseUrl ? rawBaseUrl.replace(/\/+$/, "") : "";
@@ -8,14 +10,13 @@ function resolvePath(path: string): string {
   return `${API_BASE_URL}${normalized}`;
 }
 
-function tryGetIdToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("psyflow_id_token");
+function hasAuthHeader(init?: RequestInit): boolean {
+  const headers = new Headers(init?.headers ?? undefined);
+  return headers.has("Authorization");
 }
 
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+async function buildResponse(path: string, init: RequestInit | undefined, token: string | null) {
   const headers = new Headers(init?.headers ?? undefined);
-  const token = tryGetIdToken();
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
@@ -24,4 +25,30 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     ...init,
     headers,
   });
+}
+
+export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const hasCustomAuthHeader = hasAuthHeader(init);
+  const token = hasCustomAuthHeader ? null : await getValidIdToken();
+
+  let response = await buildResponse(path, init, token);
+
+  if (!hasCustomAuthHeader && response.status === 401) {
+    const refreshed = await refreshSession();
+    if (refreshed?.idToken) {
+      response = await buildResponse(path, init, refreshed.idToken);
+    }
+  }
+
+  if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+    window.dispatchEvent(
+      new CustomEvent("psyflow:auth:unauthorized", {
+        detail: {
+          reason: response.status === 401 ? "unauthorized" : "forbidden",
+        },
+      }),
+    );
+  }
+
+  return response;
 }
