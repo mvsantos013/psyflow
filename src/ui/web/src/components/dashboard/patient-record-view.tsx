@@ -22,9 +22,9 @@ import {
   Video as VideoIcon,
 } from "lucide-react";
 import { useProntuario, useTarefas } from "@/hooks/use-prontuario";
-import { NovaSessaoSheet } from "@/components/dashboard/nova-sessao-sheet";
-import { NovaTarefaSheet } from "@/components/dashboard/nova-tarefa-sheet";
-import { SessaoTranscricaoCard } from "@/components/dashboard/sessao-transcricao-card";
+import { NewSessionSheet } from "@/components/dashboard/new-session-sheet";
+import { NewTaskSheet } from "@/components/dashboard/new-task-sheet";
+import { SessionTranscriptionCard } from "@/components/dashboard/session-transcription-card";
 import { usePagamentos } from "@/lib/pagamento-store";
 import { formatData, formatDataCurta } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -61,7 +61,7 @@ const ABORDAGENS: { value: Abordagem; label: string }[] = [
   { value: "humanista", label: "Humanista" },
 ];
 
-export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
+export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
   const { data: prontuario, isLoading } = useProntuario(pacienteId);
   const { data: tarefas = [] } = useTarefas(pacienteId);
   const generalSummary = prontuario?.generalSummary ?? null;
@@ -168,7 +168,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
         <TabsContent value="resumo" className="space-y-6">
           {generalSummary && (
             <div className="rounded-xl border bg-card p-6 shadow-sm">
-              <SinteseClinica pacienteId={pacienteId} generalSummary={generalSummary} />
+              <ClinicalSynthesis pacienteId={pacienteId} generalSummary={generalSummary} />
             </div>
           )}
 
@@ -378,7 +378,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                       <Sparkles className="h-4 w-4 text-primary" />
                       Resumo da Sessão
                     </h3>
-                    <ProfissionalAssistenteTexto
+                    <ProfessionalAssistantText
                       storageKey={`resumo-prof-${sessaoAtual.id}`}
                       iaConteudo={sessaoAtual.summary}
                       placeholder="Escreva seu próprio resumo da sessão..."
@@ -394,7 +394,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                         <Brain className="h-4 w-4 text-primary" />
                         Conclusões da Sessão
                       </h3>
-                      <ConclusoesProfAssistente
+                      <ProfessionalAssistantConclusions
                         storageKey={`conclusao-prof-${sessaoAtual.id}`}
                         aiConclusions={sessaoAtual.aiConclusions}
                         insights={sessaoAtual.insights}
@@ -416,7 +416,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                       Transcrição da Sessão
                     </h3>
                     <div className="mt-3">
-                      <SessaoTranscricaoCard
+                      <SessionTranscriptionCard
                         sessaoId={sessaoAtual.id}
                         pacienteId={pacienteId}
                         temTranscricao={sessaoAtual.hasTranscription}
@@ -432,7 +432,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
 
         {/* ========= CHAT (WhatsApp) ========= */}
         <TabsContent value="chat">
-          <ChatWhatsApp patient={patient} />
+          <WhatsAppChat patient={patient} />
         </TabsContent>
 
         {/* placeholder antigo removido */}
@@ -490,13 +490,13 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
         </TabsContent>
       </Tabs>
 
-      <NovaSessaoSheet
+      <NewSessionSheet
         pacienteId={pacienteId}
         open={sheetAberto}
         onOpenChange={setSheetAberto}
         onSessaoCriada={(id) => setSessaoSelecionadaId(id)}
       />
-      <NovaTarefaSheet
+      <NewTaskSheet
         pacienteId={pacienteId}
         open={sheetTarefaAberto}
         onOpenChange={setSheetTarefaAberto}
@@ -513,7 +513,7 @@ type ChatMsg = {
   status?: "sent" | "delivered" | "read";
 };
 
-function ChatWhatsApp({ patient }: { patient: { name: string; avatarUrl?: string } }) {
+function WhatsAppChat({ patient }: { patient: { name: string; avatarUrl?: string } }) {
   const [mensagens, setMensagens] = useState<ChatMsg[]>([
     {
       id: "m1",
@@ -654,7 +654,7 @@ type SinteseEditavel = {
 
 type ResumoGeral = NonNullable<UiPatientRecord["generalSummary"]>;
 
-function SinteseClinica({
+function ClinicalSynthesis({
   pacienteId,
   generalSummary,
 }: {
@@ -913,7 +913,7 @@ function useLocalString(key: string) {
   return [value, save] as const;
 }
 
-function ProfissionalAssistenteTexto({
+function ProfessionalAssistantText({
   storageKey,
   iaConteudo,
   placeholder,
@@ -987,7 +987,7 @@ function ProfissionalAssistenteTexto({
   );
 }
 
-function ConclusoesProfAssistente({
+function ProfessionalAssistantConclusions({
   storageKey,
   aiConclusions,
   insights,

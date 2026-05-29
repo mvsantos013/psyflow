@@ -2,13 +2,7 @@ import { useState } from "react";
 import { BookOpen, Plus, Dumbbell, Headphones, NotebookPen, Repeat2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,35 +14,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useExercicios, useAddExercicio, type NovoExercicioInput } from "@/hooks/use-exercicios";
-import type { ExercicioTemplate } from "@/ui/web/lib/mock-data";
 import { toast } from "sonner";
+import type { ExerciseTemplate } from "@/lib/ui-types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const TIPO_LABELS: Record<ExercicioTemplate["tipo"], string> = {
-  exercicio: "Exercício",
+const TIPO_LABELS: Record<ExerciseTemplate["type"], string> = {
+  exercise: "Exercício",
   audio: "Áudio",
-  diario: "Diário",
-  habito: "Hábito",
+  journal: "Diário",
+  habit: "Hábito",
 };
 
-const TIPO_ICONS: Record<ExercicioTemplate["tipo"], React.ElementType> = {
-  exercicio: Dumbbell,
+const TIPO_ICONS: Record<ExerciseTemplate["type"], React.ElementType> = {
+  exercise: Dumbbell,
   audio: Headphones,
-  diario: NotebookPen,
-  habito: Repeat2,
+  journal: NotebookPen,
+  habit: Repeat2,
 };
 
-const TIPO_COLORS: Record<ExercicioTemplate["tipo"], string> = {
-  exercicio: "bg-chart-1/10 text-chart-1 border-chart-1/20",
+const TIPO_COLORS: Record<ExerciseTemplate["type"], string> = {
+  exercise: "bg-chart-1/10 text-chart-1 border-chart-1/20",
   audio: "bg-chart-4/10 text-chart-4 border-chart-4/20",
-  diario: "bg-chart-2/10 text-chart-2 border-chart-2/20",
-  habito: "bg-chart-3/10 text-chart-3 border-chart-3/20",
+  journal: "bg-chart-2/10 text-chart-2 border-chart-2/20",
+  habit: "bg-chart-3/10 text-chart-3 border-chart-3/20",
 };
 
 // ─── Novo exercício Sheet ─────────────────────────────────────────────────────
 
-const TIPO_OPTIONS: ExercicioTemplate["tipo"][] = ["exercicio", "audio", "diario", "habito"];
+const TIPO_OPTIONS: ExerciseTemplate["type"][] = ["exercise", "audio", "journal", "habit"];
 
 function NovoExercicioSheet({
   open,
@@ -59,7 +53,7 @@ function NovoExercicioSheet({
 }) {
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [tipo, setTipo] = useState<ExercicioTemplate["tipo"] | "">("");
+  const [tipo, setTipo] = useState<ExerciseTemplate["type"] | "">("");
   const { mutate, isPending } = useAddExercicio();
 
   function reset() {
@@ -71,7 +65,11 @@ function NovoExercicioSheet({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!titulo.trim() || !tipo) return;
-    const input: NovoExercicioInput = { titulo: titulo.trim(), descricao: descricao.trim(), tipo };
+    const input: NovoExercicioInput = {
+      title: titulo.trim(),
+      description: descricao.trim(),
+      type: tipo,
+    };
     mutate(input, {
       onSuccess: () => {
         toast.success("Exercício adicionado à biblioteca");
@@ -82,7 +80,13 @@ function NovoExercicioSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) reset();
+        onOpenChange(v);
+      }}
+    >
       <SheetContent className="sm:max-w-md flex flex-col">
         <SheetHeader>
           <SheetTitle>Novo exercício</SheetTitle>
@@ -90,7 +94,9 @@ function NovoExercicioSheet({
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 gap-5 pt-4">
           <div className="space-y-1.5">
-            <Label htmlFor="ex-titulo">Título <span className="text-destructive">*</span></Label>
+            <Label htmlFor="ex-titulo">
+              Título <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="ex-titulo"
               value={titulo}
@@ -100,14 +106,18 @@ function NovoExercicioSheet({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ex-tipo">Tipo <span className="text-destructive">*</span></Label>
-            <Select value={tipo} onValueChange={(v) => setTipo(v as ExercicioTemplate["tipo"])}>
+            <Label htmlFor="ex-tipo">
+              Tipo <span className="text-destructive">*</span>
+            </Label>
+            <Select value={tipo} onValueChange={(v) => setTipo(v as ExerciseTemplate["type"])}>
               <SelectTrigger id="ex-tipo">
                 <SelectValue placeholder="Selecionar tipo" />
               </SelectTrigger>
               <SelectContent>
                 {TIPO_OPTIONS.map((t) => (
-                  <SelectItem key={t} value={t}>{TIPO_LABELS[t]}</SelectItem>
+                  <SelectItem key={t} value={t}>
+                    {TIPO_LABELS[t]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -140,7 +150,7 @@ function NovoExercicioSheet({
 
 // ─── Main view ────────────────────────────────────────────────────────────────
 
-export function ExerciciosView() {
+export function ExercisesView() {
   const [sheetAberto, setSheetAberto] = useState(false);
   const { data: exercicios = [], isLoading } = useExercicios();
 
@@ -184,24 +194,24 @@ export function ExerciciosView() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {exercicios.map((ex) => {
-            const Icon = TIPO_ICONS[ex.tipo];
+            const Icon = TIPO_ICONS[ex.type];
             return (
               <div
                 key={ex.id}
                 className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-foreground leading-snug">{ex.titulo}</p>
+                  <p className="text-sm font-semibold text-foreground leading-snug">{ex.title}</p>
                   <span
-                    className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium ${TIPO_COLORS[ex.tipo]}`}
+                    className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium ${TIPO_COLORS[ex.type]}`}
                   >
                     <Icon className="h-3 w-3" />
-                    {TIPO_LABELS[ex.tipo]}
+                    {TIPO_LABELS[ex.type]}
                   </span>
                 </div>
-                {ex.descricao && (
+                {ex.description && (
                   <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                    {ex.descricao}
+                    {ex.description}
                   </p>
                 )}
               </div>

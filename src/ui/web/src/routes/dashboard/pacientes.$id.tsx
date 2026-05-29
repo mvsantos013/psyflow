@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ProntuarioView } from "@/components/dashboard/prontuario-view";
+import { PatientRecordView } from "@/components/dashboard/patient-record-view";
 
 export const Route = createFileRoute("/dashboard/pacientes/$id")({
-  component: ProntuarioPage,
+  component: PatientRecordPage,
 });
 
-function ProntuarioPage() {
+function PatientRecordPage() {
   const { id } = Route.useParams();
-  return <ProntuarioView pacienteId={id} />;
+  return <PatientRecordView pacienteId={id} />;
 }

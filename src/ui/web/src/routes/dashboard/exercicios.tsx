@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ExerciciosView } from "@/components/dashboard/exercicios-view";
+import { ExercisesView } from "@/components/dashboard/exercises-view";
 
 export const Route = createFileRoute("/dashboard/exercicios")({
-  component: ExerciciosPage,
+  component: ExercisesPage,
 });
 
-function ExerciciosPage() {
-  return <ExerciciosView />;
+function ExercisesPage() {
+  return <ExercisesView />;
 }

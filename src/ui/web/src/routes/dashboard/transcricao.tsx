@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { TranscricaoView } from "@/components/dashboard/transcricao-view";
+import { TranscriptionView } from "@/components/dashboard/transcription-view";
 
 export const Route = createFileRoute("/dashboard/transcricao")({
-  component: TranscricaoPage,
+  component: TranscriptionPage,
 });
 
-function TranscricaoPage() {
-  return <TranscricaoView />;
+function TranscriptionPage() {
+  return <TranscriptionView />;
 }

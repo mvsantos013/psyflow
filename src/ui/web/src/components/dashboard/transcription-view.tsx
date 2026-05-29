@@ -29,7 +29,7 @@ import {
 } from "@/lib/session-upload";
 import { toast } from "sonner";
 
-export function TranscricaoView() {
+export function TranscriptionView() {
   const [pacienteId, setPacienteId] = useState<string>("");
   const [sessaoId, setSessaoId] = useState<string>("");
   const [status, setStatus] = useState<"idle" | "uploading" | "processing" | "done">("idle");

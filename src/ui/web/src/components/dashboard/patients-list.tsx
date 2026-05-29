@@ -40,7 +40,7 @@ function emptyFormState(): NovoPacienteFormState {
   };
 }
 
-export function PacientesList() {
+export function PatientsList() {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);

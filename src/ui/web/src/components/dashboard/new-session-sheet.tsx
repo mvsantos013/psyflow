@@ -66,7 +66,7 @@ const EMPTY_DEFAULTS: FormValues = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-interface NovaSessaoSheetProps {
+interface NewSessionSheetProps {
   pacienteId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -74,12 +74,12 @@ interface NovaSessaoSheetProps {
   onSessaoCriada: (sessaoId: string) => void;
 }
 
-export function NovaSessaoSheet({
+export function NewSessionSheet({
   pacienteId,
   open,
   onOpenChange,
   onSessaoCriada,
-}: NovaSessaoSheetProps) {
+}: NewSessionSheetProps) {
   const { mutate, isPending } = useAddSessao(pacienteId);
 
   const form = useForm<FormValues>({

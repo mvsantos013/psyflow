@@ -84,19 +84,19 @@ function TranscriptViewer({ text }: { text: string }) {
 
 type ProcessingStatus = "idle" | "uploading" | "processing" | "done";
 
-interface SessaoTranscricaoCardProps {
+interface SessionTranscriptionCardProps {
   sessaoId: string;
   pacienteId: string;
   temTranscricao: boolean;
   transcricaoInicial?: string;
 }
 
-export function SessaoTranscricaoCard({
+export function SessionTranscriptionCard({
   sessaoId,
   pacienteId,
   temTranscricao,
   transcricaoInicial,
-}: SessaoTranscricaoCardProps) {
+}: SessionTranscriptionCardProps) {
   const [transcricaoTexto, setTranscricaoTexto] = useState<string>(
     temTranscricao && transcricaoInicial ? transcricaoInicial : ""
   );
