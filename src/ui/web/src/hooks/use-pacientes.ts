@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { normalizePatient } from "@/lib/api-normalizers";
 import { apiFetch } from "@/lib/api";
-import type { Paciente } from "@/lib/ui-types";
+import type { Patient } from "@/lib/ui-types";
 
 export type CreatePacienteInput = {
   name: string;
@@ -10,14 +10,14 @@ export type CreatePacienteInput = {
   treatmentStartDate: string;
 };
 
-async function fetchPacientes(): Promise<Paciente[]> {
+async function fetchPatients(): Promise<Patient[]> {
   const res = await apiFetch("/api/patients");
   if (!res.ok) throw new Error("Falha ao buscar pacientes");
   const data = await res.json();
   return Array.isArray(data) ? data.map(normalizePatient) : [];
 }
 
-async function createPaciente(input: CreatePacienteInput): Promise<Paciente> {
+async function createPatient(input: CreatePacienteInput): Promise<Patient> {
   const res = await apiFetch("/api/patients", {
     method: "POST",
     headers: {
@@ -32,7 +32,7 @@ async function createPaciente(input: CreatePacienteInput): Promise<Paciente> {
 export function usePacientes() {
   return useQuery({
     queryKey: ["pacientes"],
-    queryFn: fetchPacientes,
+    queryFn: fetchPatients,
   });
 }
 
@@ -40,7 +40,7 @@ export function useCreatePaciente() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: createPaciente,
+    mutationFn: createPatient,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["pacientes"] });
     },

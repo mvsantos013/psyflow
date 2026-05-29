@@ -1,99 +1,99 @@
-export type PatientStatus = "ativo" | "inativo" | "alta";
-export type SessionType = "presencial" | "remota";
-export type TaskType = "exercicio" | "audio" | "diario" | "habito";
-export type TaskStatus = "pendente" | "concluida" | "aprovada";
-export type MoodSource = "paciente" | "profissional";
+export type PatientStatus = "active" | "inactive" | "archived" | "discharged";
+export type SessionType = "inPerson" | "remote";
+export type TaskType = "exercise" | "audio" | "journal" | "habit";
+export type TaskStatus = "pending" | "completed" | "approved";
+export type MoodSource = "patient" | "professional";
 
-export type ConclusoesIA = {
+export type AIConclusions = {
   tcc?: string;
   psicanalise?: string;
   sistemica?: string;
   humanista?: string;
 };
 
-export type ResumoGeral = {
+export type GeneralSummary = {
   sintese: string;
-  temasRecorrentes: string[];
-  evolucaoGeral: string;
-  pontosAtencao: string[];
+  recurringThemes: string[];
+  generalProgress: string;
+  attentionPoints: string[];
 };
 
-export type Paciente = {
+export type Patient = {
   id: string;
-  nome: string;
+  name: string;
   email: string;
-  idade: number;
-  dataNascimento?: string;
-  inicioTratamento: string;
+  age: number;
+  birthDate?: string;
+  treatmentStartDate: string;
   status: PatientStatus;
-  ultimaSessao: string;
-  proximaSessao: string;
-  proximaSessaoHora?: string;
-  humorMedio: number;
-  diarioCount: number;
-  foto?: string;
+  lastSession: string;
+  nextSession: string;
+  nextSessionHour?: string;
+  averageMood: number;
+  journalCount: number;
+  avatarUrl?: string;
 };
 
-export type Sessao = {
+export type Session = {
   id: string;
-  pacienteId: string;
-  data: string;
-  tipo: SessionType;
-  duracao: number;
-  resumo: string;
+  patientId: string;
+  date: string;
+  type: SessionType;
+  duration: number;
+  summary: string;
   insights: string[];
-  humorInicio: number;
-  humorFim: number;
-  temTranscricao: boolean;
-  transcricao?: string;
+  moodStart: number;
+  moodEnd: number;
+  hasTranscription: boolean;
+  transcription?: string;
   audioS3Key?: string;
   transcriptionS3Key?: string;
-  conclusoesIA?: ConclusoesIA;
+  aiConclusions?: AIConclusions;
 };
 
-export type RegistroHumor = {
-  data: string;
-  valor: number;
-  fonte: MoodSource;
+export type MoodRecord = {
+  date: string;
+  value: number;
+  source: MoodSource;
 };
 
-export type Prontuario = {
-  paciente: Paciente;
-  sessoes: Sessao[];
-  registrosHumor: RegistroHumor[];
-  diagnosticos: string[];
-  observacoes: string;
-  resumoGeral?: ResumoGeral | null;
+export type PatientRecord = {
+  patient: Patient;
+  sessions: Session[];
+  moodRecords: MoodRecord[];
+  diagnoses: string[];
+  notes: string;
+  generalSummary?: GeneralSummary | null;
 };
 
-export type TarefaPrescrita = {
+export type PrescribedTask = {
   id: string;
-  pacienteId: string;
-  titulo: string;
-  descricao: string;
-  tipo: TaskType;
+  patientId: string;
+  title: string;
+  description: string;
+  type: TaskType;
   status: TaskStatus;
-  dataPrescricao: string;
-  dataConclusao?: string;
+  prescribedAt: string;
+  completedAt?: string;
 };
 
-export type ExercicioTemplate = {
+export type ExerciseTemplate = {
   id: string;
-  titulo: string;
-  descricao: string;
-  tipo: TaskType;
+  title: string;
+  description: string;
+  type: TaskType;
 };
 
 export type AgendaEntry = {
-  diaOffset: number;
-  hora: number;
-  pacienteId: string;
-  tipo: SessionType;
+  dayOffset: number;
+  hour: number;
+  patientId: string;
+  type: SessionType;
 };
 
-export type TranscricaoResult = {
-  resumo: string;
+export type TranscriptionResult = {
+  summary: string;
   insights: string[];
-  tarefas: string[];
-  transcricao?: string;
+  tasks: string[];
+  transcription?: string;
 };

@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -22,32 +16,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAddTarefa, type NovaTarefaInput } from "@/hooks/use-prontuario";
 import { useExercicios } from "@/hooks/use-exercicios";
 import { toast } from "sonner";
-import type { ExercicioTemplate } from "@/lib/ui-types";
+import type { ExerciseTemplate } from "@/lib/ui-types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const TIPO_LABELS: Record<ExercicioTemplate["tipo"], string> = {
-  exercicio: "Exercício",
+const TIPO_LABELS: Record<ExerciseTemplate["type"], string> = {
+  exercise: "Exercício",
   audio: "Áudio",
-  diario: "Diário",
-  habito: "Hábito",
+  journal: "Diário",
+  habit: "Hábito",
 };
 
-const TIPO_ICONS: Record<ExercicioTemplate["tipo"], React.ElementType> = {
-  exercicio: Dumbbell,
+const TIPO_ICONS: Record<ExerciseTemplate["type"], React.ElementType> = {
+  exercise: Dumbbell,
   audio: Headphones,
-  diario: NotebookPen,
-  habito: Repeat2,
+  journal: NotebookPen,
+  habit: Repeat2,
 };
 
-const TIPO_COLORS: Record<ExercicioTemplate["tipo"], string> = {
-  exercicio: "bg-chart-1/10 text-chart-1 border-chart-1/20",
+const TIPO_COLORS: Record<ExerciseTemplate["type"], string> = {
+  exercise: "bg-chart-1/10 text-chart-1 border-chart-1/20",
   audio: "bg-chart-4/10 text-chart-4 border-chart-4/20",
-  diario: "bg-chart-2/10 text-chart-2 border-chart-2/20",
-  habito: "bg-chart-3/10 text-chart-3 border-chart-3/20",
+  journal: "bg-chart-2/10 text-chart-2 border-chart-2/20",
+  habit: "bg-chart-3/10 text-chart-3 border-chart-3/20",
 };
 
-const TIPO_OPTIONS: ExercicioTemplate["tipo"][] = ["exercicio", "audio", "diario", "habito"];
+const TIPO_OPTIONS: ExerciseTemplate["type"][] = ["exercise", "audio", "journal", "habit"];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -61,7 +55,7 @@ export function NovaTarefaSheet({ pacienteId, open, onOpenChange }: NovaTarefaSh
   const [aba, setAba] = useState<"nova" | "biblioteca">("nova");
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [tipo, setTipo] = useState<ExercicioTemplate["tipo"] | "">("");
+  const [tipo, setTipo] = useState<ExerciseTemplate["type"] | "">("");
 
   const { mutate, isPending } = useAddTarefa(pacienteId);
   const { data: exercicios = [] } = useExercicios();
@@ -79,10 +73,10 @@ export function NovaTarefaSheet({ pacienteId, open, onOpenChange }: NovaTarefaSh
   }
 
   /** Pre-fill the form from a library template and switch to "nova" tab. */
-  function handleSelectTemplate(ex: ExercicioTemplate) {
-    setTitulo(ex.titulo);
-    setDescricao(ex.descricao);
-    setTipo(ex.tipo);
+  function handleSelectTemplate(ex: ExerciseTemplate) {
+    setTitulo(ex.title);
+    setDescricao(ex.description);
+    setTipo(ex.type);
     setAba("nova");
   }
 
@@ -90,9 +84,9 @@ export function NovaTarefaSheet({ pacienteId, open, onOpenChange }: NovaTarefaSh
     e.preventDefault();
     if (!titulo.trim() || !tipo) return;
     const input: NovaTarefaInput = {
-      titulo: titulo.trim(),
-      descricao: descricao.trim(),
-      tipo,
+      title: titulo.trim(),
+      description: descricao.trim(),
+      type: tipo,
     };
     mutate(input, {
       onSuccess: () => {
@@ -103,13 +97,23 @@ export function NovaTarefaSheet({ pacienteId, open, onOpenChange }: NovaTarefaSh
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) handleClose(); else onOpenChange(v); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) handleClose();
+        else onOpenChange(v);
+      }}
+    >
       <SheetContent className="sm:max-w-lg flex flex-col">
         <SheetHeader>
           <SheetTitle>Prescrever tarefa</SheetTitle>
         </SheetHeader>
 
-        <Tabs value={aba} onValueChange={(v) => setAba(v as "nova" | "biblioteca")} className="flex flex-col flex-1 min-h-0 pt-2">
+        <Tabs
+          value={aba}
+          onValueChange={(v) => setAba(v as "nova" | "biblioteca")}
+          className="flex flex-col flex-1 min-h-0 pt-2"
+        >
           <TabsList className="w-full">
             <TabsTrigger value="nova" className="flex-1 gap-2">
               <Plus className="h-3.5 w-3.5" />
@@ -140,10 +144,7 @@ export function NovaTarefaSheet({ pacienteId, open, onOpenChange }: NovaTarefaSh
                 <Label htmlFor="tarefa-tipo">
                   Tipo <span className="text-destructive">*</span>
                 </Label>
-                <Select
-                  value={tipo}
-                  onValueChange={(v) => setTipo(v as ExercicioTemplate["tipo"])}
-                >
+                <Select value={tipo} onValueChange={(v) => setTipo(v as ExerciseTemplate["type"])}>
                   <SelectTrigger id="tarefa-tipo">
                     <SelectValue placeholder="Selecionar tipo" />
                   </SelectTrigger>
@@ -197,7 +198,7 @@ export function NovaTarefaSheet({ pacienteId, open, onOpenChange }: NovaTarefaSh
             ) : (
               <div className="space-y-2 overflow-auto max-h-[calc(100vh-18rem)] pr-1">
                 {exercicios.map((ex) => {
-                  const Icon = TIPO_ICONS[ex.tipo];
+                  const Icon = TIPO_ICONS[ex.type];
                   return (
                     <button
                       key={ex.id}
@@ -207,18 +208,18 @@ export function NovaTarefaSheet({ pacienteId, open, onOpenChange }: NovaTarefaSh
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium text-foreground leading-snug">
-                          {ex.titulo}
+                          {ex.title}
                         </p>
                         <span
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${TIPO_COLORS[ex.tipo]}`}
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${TIPO_COLORS[ex.type]}`}
                         >
                           <Icon className="h-2.5 w-2.5" />
-                          {TIPO_LABELS[ex.tipo]}
+                          {TIPO_LABELS[ex.type]}
                         </span>
                       </div>
-                      {ex.descricao && (
+                      {ex.description && (
                         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                          {ex.descricao}
+                          {ex.description}
                         </p>
                       )}
                     </button>

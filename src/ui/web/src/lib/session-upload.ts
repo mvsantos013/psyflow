@@ -1,5 +1,4 @@
 import { apiFetch } from "@/lib/api";
-import { toApiSessionType } from "@/lib/api-normalizers";
 import { withRetry } from "@/lib/retry";
 
 type SessionPatchPayload = {
@@ -26,7 +25,7 @@ function buildUploadHeaders(file: File, presignedHeaders?: Record<string, string
   if (presignedHeaders?.["x-amz-server-side-encryption"]) {
     uploadHeaders.set(
       "x-amz-server-side-encryption",
-      presignedHeaders["x-amz-server-side-encryption"]
+      presignedHeaders["x-amz-server-side-encryption"],
     );
   }
 
@@ -36,7 +35,7 @@ function buildUploadHeaders(file: File, presignedHeaders?: Record<string, string
 export async function patchSessionMetadata(
   sessionId: string,
   patientId: string,
-  payload: SessionPatchPayload
+  payload: SessionPatchPayload,
 ): Promise<void> {
   const response = await withRetry(
     () =>
@@ -45,7 +44,7 @@ export async function patchSessionMetadata(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patientId, ...payload }),
       }),
-    { stepLabel: "Falha ao atualizar metadados da sessão" }
+    { stepLabel: "Falha ao atualizar metadados da sessão" },
   );
 
   if (!response.ok) {
@@ -55,7 +54,7 @@ export async function patchSessionMetadata(
 
 export async function ensureSessionForPatient(
   patientId: string,
-  existingSessionId?: string
+  existingSessionId?: string,
 ): Promise<{ sessionId: string; created: boolean }> {
   if (existingSessionId) {
     return { sessionId: existingSessionId, created: false };
@@ -69,12 +68,12 @@ export async function ensureSessionForPatient(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: today,
-          type: toApiSessionType("remota"),
+          type: "remote",
           duration: 50,
           summary: "Sessão criada automaticamente para fluxo de transcrição.",
         }),
       }),
-    { stepLabel: "Falha ao criar sessão para upload" }
+    { stepLabel: "Falha ao criar sessão para upload" },
   );
 
   if (!response.ok) {
@@ -88,7 +87,7 @@ export async function ensureSessionForPatient(
 export async function uploadSessionAudioAndMarkProcessing(
   patientId: string,
   sessionId: string,
-  file: File
+  file: File,
 ): Promise<{ audioS3Key: string }> {
   const presignRes = await withRetry(
     () =>
@@ -102,7 +101,7 @@ export async function uploadSessionAudioAndMarkProcessing(
           contentType: file.type || "audio/mpeg",
         }),
       }),
-    { stepLabel: "Falha ao gerar URL de upload" }
+    { stepLabel: "Falha ao gerar URL de upload" },
   );
 
   if (!presignRes.ok) {
@@ -119,7 +118,7 @@ export async function uploadSessionAudioAndMarkProcessing(
         headers: uploadHeaders,
         body: file,
       }),
-    { stepLabel: "Falha no upload para armazenamento" }
+    { stepLabel: "Falha no upload para armazenamento" },
   );
 
   if (!uploadRes.ok) {
@@ -138,7 +137,7 @@ export async function saveSessionTranscriptionAndMarkDone(
   sessionId: string,
   patientId: string,
   transcription: string,
-  audioS3Key?: string
+  audioS3Key?: string,
 ): Promise<void> {
   const response = await withRetry(
     () =>
@@ -152,7 +151,7 @@ export async function saveSessionTranscriptionAndMarkDone(
           storeInS3: true,
         }),
       }),
-    { stepLabel: "Falha ao salvar transcrição" }
+    { stepLabel: "Falha ao salvar transcrição" },
   );
 
   if (!response.ok) {

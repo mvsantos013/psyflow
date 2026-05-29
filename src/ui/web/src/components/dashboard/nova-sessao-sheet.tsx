@@ -33,18 +33,17 @@ import { useAddSessao, type NovaSessaoInput } from "@/hooks/use-prontuario";
 
 const novaSessaoSchema = z.object({
   /** ISO date string (yyyy-mm-dd). */
-  data: z.string().min(1, "Informe a data da sessão"),
-  tipo: z.enum(["presencial", "remota"]),
+  date: z.string().min(1, "Informe a data da sessão"),
+  type: z.enum(["inPerson", "remote"]),
   /** Duração em minutos. */
-  duracao: z
-    .coerce
+  duration: z.coerce
     .number({ invalid_type_error: "Duração obrigatória" })
     .min(5, "Mínimo 5 min")
     .max(240, "Máximo 240 min"),
   /** Escala 1–10. Opcional: o profissional pode não registrar na hora. */
-  humorInicio: z.number().min(1).max(10).optional(),
-  humorFim: z.number().min(1).max(10).optional(),
-  resumo: z.string().optional(),
+  moodStart: z.number().min(1).max(10).optional(),
+  moodEnd: z.number().min(1).max(10).optional(),
+  summary: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof novaSessaoSchema>;
@@ -57,12 +56,12 @@ function todayIso(): string {
 }
 
 const EMPTY_DEFAULTS: FormValues = {
-  data: todayIso(),
-  tipo: "presencial",
-  duracao: 50,
-  humorInicio: undefined,
-  humorFim: undefined,
-  resumo: "",
+  date: todayIso(),
+  type: "inPerson",
+  duration: 50,
+  moodStart: undefined,
+  moodEnd: undefined,
+  summary: "",
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -94,7 +93,7 @@ export function NovaSessaoSheet({
         toast.success("Sessão registrada com sucesso");
         onSessaoCriada(sessao.id);
         onOpenChange(false);
-        form.reset({ ...EMPTY_DEFAULTS, data: todayIso() });
+        form.reset({ ...EMPTY_DEFAULTS, date: todayIso() });
       },
       onError: () => {
         toast.error("Erro ao registrar sessão. Tente novamente.");
@@ -108,20 +107,17 @@ export function NovaSessaoSheet({
         <SheetHeader>
           <SheetTitle>Nova Sessão</SheetTitle>
           <SheetDescription>
-            Preencha os dados básicos. Resumo detalhado e conclusões podem ser
-            adicionados depois na view da sessão.
+            Preencha os dados básicos. Resumo detalhado e conclusões podem ser adicionados depois na
+            view da sessão.
           </SheetDescription>
         </SheetHeader>
 
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="mt-6 space-y-5"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-5">
             {/* ── Data ─────────────────────────────────────────────────── */}
             <FormField
               control={form.control}
-              name="data"
+              name="date"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Data *</FormLabel>
@@ -136,13 +132,13 @@ export function NovaSessaoSheet({
             {/* ── Modalidade ───────────────────────────────────────────── */}
             <FormField
               control={form.control}
-              name="tipo"
+              name="type"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Modalidade *</FormLabel>
                   <FormControl>
                     <div className="flex gap-2">
-                      {(["presencial", "remota"] as const).map((t) => (
+                      {(["inPerson", "remote"] as const).map((t) => (
                         <button
                           key={t}
                           type="button"
@@ -153,12 +149,12 @@ export function NovaSessaoSheet({
                               : "hover:border-muted-foreground/40 hover:bg-muted/40"
                           }`}
                         >
-                          {t === "presencial" ? (
+                          {t === "inPerson" ? (
                             <MapPin className="h-4 w-4" />
                           ) : (
                             <Video className="h-4 w-4" />
                           )}
-                          {t === "presencial" ? "Presencial" : "Remota"}
+                          {t === "inPerson" ? "Presencial" : "Remota"}
                         </button>
                       ))}
                     </div>
@@ -171,7 +167,7 @@ export function NovaSessaoSheet({
             {/* ── Duração ──────────────────────────────────────────────── */}
             <FormField
               control={form.control}
-              name="duracao"
+              name="duration"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Duração (minutos) *</FormLabel>
@@ -186,7 +182,7 @@ export function NovaSessaoSheet({
             {/* ── Humor início ─────────────────────────────────────────── */}
             <FormField
               control={form.control}
-              name="humorInicio"
+              name="moodStart"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center justify-between">
@@ -212,7 +208,7 @@ export function NovaSessaoSheet({
             {/* ── Humor fim ────────────────────────────────────────────── */}
             <FormField
               control={form.control}
-              name="humorFim"
+              name="moodEnd"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center justify-between">
@@ -238,7 +234,7 @@ export function NovaSessaoSheet({
             {/* ── Notas ────────────────────────────────────────────────── */}
             <FormField
               control={form.control}
-              name="resumo"
+              name="summary"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notas da sessão</FormLabel>
@@ -264,9 +260,7 @@ export function NovaSessaoSheet({
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Registrar Sessão
               </Button>
             </SheetFooter>

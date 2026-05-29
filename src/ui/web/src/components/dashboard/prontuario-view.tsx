@@ -32,12 +32,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -55,7 +50,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { Prontuario as UiProntuario, Sessao as UiSessao } from "@/lib/ui-types";
+import type { PatientRecord as UiPatientRecord, Session as UiSession } from "@/lib/ui-types";
 
 type Abordagem = "tcc" | "psicanalise" | "sistemica" | "humanista";
 
@@ -69,22 +64,20 @@ const ABORDAGENS: { value: Abordagem; label: string }[] = [
 export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
   const { data: prontuario, isLoading } = useProntuario(pacienteId);
   const { data: tarefas = [] } = useTarefas(pacienteId);
-  const resumoGeral = prontuario?.resumoGeral ?? null;
+  const generalSummary = prontuario?.generalSummary ?? null;
   const { isPaid, togglePaid } = usePagamentos();
   const [abordagem, setAbordagem] = useState<Abordagem>("tcc");
-  const [abaAtiva, setAbaAtiva] = useState<"profissional" | "assistente">("profissional");
-  const [sessaoSelecionadaId, setSessaoSelecionadaId] = useState<string | null>(
-    null
-  );
+  const [abaAtiva, setAbaAtiva] = useState<"professional" | "assistente">("professional");
+  const [sessaoSelecionadaId, setSessaoSelecionadaId] = useState<string | null>(null);
   const [sheetAberto, setSheetAberto] = useState(false);
   const [sheetTarefaAberto, setSheetTarefaAberto] = useState(false);
 
   const sessoesOrdenadas = useMemo(
     () =>
-      [...(prontuario?.sessoes || [])].sort(
-        (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()
+      [...(prontuario?.sessions || [])].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       ),
-    [prontuario]
+    [prontuario],
   );
 
   if (isLoading) {
@@ -103,30 +96,23 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
     );
   }
 
-  const { paciente, sessoes, registrosHumor, diagnosticos } = prontuario;
+  const { patient, sessions, moodRecords, diagnoses } = prontuario;
   const sessaoAtual =
-    sessoesOrdenadas.find((s) => s.id === sessaoSelecionadaId) ||
-    sessoesOrdenadas[0];
+    sessoesOrdenadas.find((s) => s.id === sessaoSelecionadaId) || sessoesOrdenadas[0];
 
   // Merge two humor series on a unified sorted date axis
   const humorData = useMemo(() => {
-    const allDates = [
-      ...new Set(registrosHumor.map((r) => r.data)),
-    ].sort();
+    const allDates = [...new Set(moodRecords.map((r) => r.date))].sort();
     return allDates.map((d) => {
-      const p = registrosHumor.find(
-        (r) => r.data === d && r.fonte === "paciente"
-      );
-      const prof = registrosHumor.find(
-        (r) => r.data === d && r.fonte === "profissional"
-      );
+      const p = moodRecords.find((r) => r.date === d && r.source === "patient");
+      const prof = moodRecords.find((r) => r.date === d && r.source === "professional");
       return {
         data: formatDataCurta(d),
-        paciente: p?.valor ?? null,
-        profissional: prof?.valor ?? null,
+        patient: p?.value ?? null,
+        professional: prof?.value ?? null,
       };
     });
-  }, [registrosHumor]);
+  }, [moodRecords]);
 
   return (
     <div className="space-y-6">
@@ -140,23 +126,21 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
         </Link>
       </div>
 
-      {/* Header paciente */}
+      {/* Header patient */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <img
-          src={paciente.foto}
-          alt={paciente.nome}
+          src={patient.avatarUrl}
+          alt={patient.name}
           className="h-16 w-16 rounded-full bg-muted object-cover"
         />
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {paciente.nome}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{patient.name}</h1>
           <p className="text-sm text-muted-foreground">
-            {paciente.idade} anos · {paciente.email} · Tratamento desde{" "}
-            {formatData(paciente.inicioTratamento)}
+            {patient.age} anos · {patient.email} · Tratamento desde{" "}
+            {formatData(patient.treatmentStartDate)}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {diagnosticos.map((d) => (
+            {diagnoses.map((d) => (
               <span
                 key={d}
                 className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
@@ -168,23 +152,23 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
           </div>
         </div>
         <span className="self-start sm:self-center">
-            <StatusBadge status={paciente.status} />
-          </span>
+          <StatusBadge status={patient.status} />
+        </span>
       </div>
 
       <Tabs defaultValue="resumo" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="resumo">Visão Geral</TabsTrigger>
-          <TabsTrigger value="sessoes">Sessões</TabsTrigger>
+          <TabsTrigger value="sessions">Sessões</TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
         </TabsList>
 
         {/* ========= VISÃO GERAL ========= */}
         <TabsContent value="resumo" className="space-y-6">
-          {resumoGeral && (
+          {generalSummary && (
             <div className="rounded-xl border bg-card p-6 shadow-sm">
-              <SinteseClinica pacienteId={pacienteId} resumoGeral={resumoGeral} />
+              <SinteseClinica pacienteId={pacienteId} generalSummary={generalSummary} />
             </div>
           )}
 
@@ -198,23 +182,36 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={humorData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis dataKey="data" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} stroke="var(--color-border)" />
-                    <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} stroke="var(--color-border)" />
+                    <XAxis
+                      dataKey="data"
+                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                      stroke="var(--color-border)"
+                    />
+                    <YAxis
+                      domain={[0, 10]}
+                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                      stroke="var(--color-border)"
+                    />
                     <Tooltip
-                      contentStyle={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: "0.5rem", fontSize: 12 }}
+                      contentStyle={{
+                        backgroundColor: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "0.5rem",
+                        fontSize: 12,
+                      }}
                       formatter={(value, name) => [
                         value !== null && value !== undefined ? `${value}/10` : "—",
-                        name === "paciente" ? "Paciente" : "Profissional",
+                        name === "patient" ? "Paciente" : "Profissional",
                       ]}
                     />
                     <Legend
-                      formatter={(value) => value === "paciente" ? "Paciente" : "Profissional"}
+                      formatter={(value) => (value === "patient" ? "Paciente" : "Profissional")}
                       wrapperStyle={{ fontSize: 12 }}
                     />
                     <Line
                       type="monotone"
-                      dataKey="paciente"
-                      name="paciente"
+                      dataKey="patient"
+                      name="patient"
                       stroke="var(--color-primary)"
                       strokeWidth={2}
                       dot={{ r: 3, fill: "var(--color-primary)" }}
@@ -223,8 +220,8 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                     />
                     <Line
                       type="monotone"
-                      dataKey="profissional"
-                      name="profissional"
+                      dataKey="professional"
+                      name="professional"
                       stroke="var(--color-chart-2)"
                       strokeWidth={2}
                       strokeDasharray="6 3"
@@ -240,12 +237,12 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
         </TabsContent>
 
         {/* ========= SESSÕES (lista + detalhes) ========= */}
-        <TabsContent value="sessoes" className="space-y-4">
+        <TabsContent value="sessions" className="space-y-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
               <h2 className="text-base font-semibold text-foreground">
-                Histórico de Sessões ({sessoes.length})
+                Histórico de Sessões ({sessions.length})
               </h2>
             </div>
             <Button size="sm" onClick={() => setSheetAberto(true)}>
@@ -255,9 +252,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
           </div>
 
           {sessoesOrdenadas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma sessão registrada.
-            </p>
+            <p className="text-sm text-muted-foreground">Nenhuma sessão registrada.</p>
           ) : (
             <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
               {/* Lista de sessões */}
@@ -277,7 +272,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold text-foreground">
-                          {formatDataCurta(s.data)}
+                          {formatDataCurta(s.date)}
                         </span>
                         {pago ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
@@ -292,18 +287,18 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                       <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                         <span
                           className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium ${
-                            s.tipo === "remota"
+                            s.type === "remote"
                               ? "bg-chart-3/10 text-chart-3"
                               : "bg-chart-1/10 text-chart-1"
                           }`}
                         >
-                          {s.tipo === "remota" ? "Remota" : "Presencial"}
+                          {s.type === "remote" ? "Remota" : "Presencial"}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {s.duracao}min
+                          {s.duration}min
                         </span>
-                        {s.temTranscricao && (
+                        {s.hasTranscription && (
                           <span className="inline-flex items-center gap-1 text-primary">
                             <Sparkles className="h-3 w-3" />
                             IA
@@ -323,20 +318,18 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <h3 className="text-base font-semibold text-foreground">
-                          {formatData(sessaoAtual.data)}
+                          {formatData(sessaoAtual.date)}
                         </h3>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>
-                            {sessaoAtual.tipo === "remota" ? "Remota" : "Presencial"}
-                          </span>
+                          <span>{sessaoAtual.type === "remote" ? "Remota" : "Presencial"}</span>
                           <span>·</span>
-                          <span>{sessaoAtual.duracao} min</span>
+                          <span>{sessaoAtual.duration} min</span>
                           <span>·</span>
                           <span>
-                            Humor {sessaoAtual.humorInicio} → {sessaoAtual.humorFim}
-                            {sessaoAtual.humorFim > sessaoAtual.humorInicio && (
+                            Humor {sessaoAtual.moodStart} → {sessaoAtual.moodEnd}
+                            {sessaoAtual.moodEnd > sessaoAtual.moodStart && (
                               <span className="text-chart-2 font-medium ml-1">
-                                (+{sessaoAtual.humorFim - sessaoAtual.humorInicio})
+                                (+{sessaoAtual.moodEnd - sessaoAtual.moodStart})
                               </span>
                             )}
                           </span>
@@ -368,9 +361,12 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
 
                   {/* Switch compartilhado Profissional / Assistente de IA */}
                   <div className="flex items-center justify-between">
-                    <Tabs value={abaAtiva} onValueChange={(v) => setAbaAtiva(v as "profissional" | "assistente")}>
+                    <Tabs
+                      value={abaAtiva}
+                      onValueChange={(v) => setAbaAtiva(v as "professional" | "assistente")}
+                    >
                       <TabsList>
-                        <TabsTrigger value="profissional">Profissional</TabsTrigger>
+                        <TabsTrigger value="professional">Profissional</TabsTrigger>
                         <TabsTrigger value="assistente">Assistente de IA</TabsTrigger>
                       </TabsList>
                     </Tabs>
@@ -384,7 +380,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                     </h3>
                     <ProfissionalAssistenteTexto
                       storageKey={`resumo-prof-${sessaoAtual.id}`}
-                      iaConteudo={sessaoAtual.resumo}
+                      iaConteudo={sessaoAtual.summary}
                       placeholder="Escreva seu próprio resumo da sessão..."
                       emptyLabel="Nenhum resumo registrado por você ainda."
                       aba={abaAtiva}
@@ -392,7 +388,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                   </div>
 
                   {/* Conclusões IA */}
-                  {sessaoAtual.conclusoesIA ? (
+                  {sessaoAtual.aiConclusions ? (
                     <div className="rounded-xl border bg-card p-5 shadow-sm">
                       <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                         <Brain className="h-4 w-4 text-primary" />
@@ -400,7 +396,7 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                       </h3>
                       <ConclusoesProfAssistente
                         storageKey={`conclusao-prof-${sessaoAtual.id}`}
-                        conclusoesIA={sessaoAtual.conclusoesIA}
+                        aiConclusions={sessaoAtual.aiConclusions}
                         insights={sessaoAtual.insights}
                         abordagem={abordagem}
                         setAbordagem={setAbordagem}
@@ -423,8 +419,8 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
                       <SessaoTranscricaoCard
                         sessaoId={sessaoAtual.id}
                         pacienteId={pacienteId}
-                        temTranscricao={sessaoAtual.temTranscricao}
-                        transcricaoInicial={sessaoAtual.transcricao}
+                        temTranscricao={sessaoAtual.hasTranscription}
+                        transcricaoInicial={sessaoAtual.transcription}
                       />
                     </div>
                   </div>
@@ -436,14 +432,14 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
 
         {/* ========= CHAT (WhatsApp) ========= */}
         <TabsContent value="chat">
-          <ChatWhatsApp paciente={paciente} />
+          <ChatWhatsApp patient={patient} />
         </TabsContent>
 
         {/* placeholder antigo removido */}
         {false && (
-            <>
+          <>
             <div />
-            </>
+          </>
         )}
 
         {/* ========= TAREFAS ========= */}
@@ -461,34 +457,29 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
             </Button>
           </div>
           {tarefas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma tarefa prescrita.
-            </p>
+            <p className="text-sm text-muted-foreground">Nenhuma tarefa prescrita.</p>
           ) : (
             <div className="space-y-3">
               {tarefas.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-start gap-3 rounded-lg border bg-card p-4"
-                >
+                <div key={t.id} className="flex items-start gap-3 rounded-lg border bg-card p-4">
                   <div
                     className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
-                      t.status === "concluida"
+                      t.status === "completed"
                         ? "bg-chart-2"
-                        : t.status === "aprovada"
-                        ? "bg-primary"
-                        : "bg-muted-foreground"
+                        : t.status === "approved"
+                          ? "bg-primary"
+                          : "bg-muted-foreground"
                     }`}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{t.titulo}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t.descricao}</p>
+                    <p className="text-sm font-medium text-foreground">{t.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
                     <div className="mt-1.5 flex items-center gap-2">
                       <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                        {t.tipo}
+                        {t.type}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatDataCurta(t.dataPrescricao)}
+                        {formatDataCurta(t.prescribedAt)}
                       </span>
                     </div>
                   </div>
@@ -516,17 +507,13 @@ export function ProntuarioView({ pacienteId }: { pacienteId: string }) {
 
 type ChatMsg = {
   id: string;
-  from: "psi" | "paciente";
+  from: "psi" | "patient";
   text: string;
   time: string;
   status?: "sent" | "delivered" | "read";
 };
 
-function ChatWhatsApp({
-  paciente,
-}: {
-  paciente: { nome: string; foto?: string };
-}) {
+function ChatWhatsApp({ patient }: { patient: { name: string; avatarUrl?: string } }) {
   const [mensagens, setMensagens] = useState<ChatMsg[]>([
     {
       id: "m1",
@@ -537,7 +524,7 @@ function ChatWhatsApp({
     },
     {
       id: "m2",
-      from: "paciente",
+      from: "patient",
       text: "Oi, tudo sim! Confirmado. Posso usar o link de sempre?",
       time: "09:18",
     },
@@ -550,7 +537,7 @@ function ChatWhatsApp({
     },
     {
       id: "m4",
-      from: "paciente",
+      from: "patient",
       text: "Combinado, vou anotar essa semana. Obrigado!",
       time: "09:22",
     },
@@ -583,14 +570,12 @@ function ChatWhatsApp({
       {/* Header */}
       <div className="flex items-center gap-3 border-b bg-muted/40 px-4 py-3">
         <img
-          src={paciente.foto}
-          alt={paciente.nome}
+          src={patient.avatarUrl}
+          alt={patient.name}
           className="h-10 w-10 rounded-full bg-muted object-cover"
         />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">
-            {paciente.nome}
-          </p>
+          <p className="text-sm font-semibold text-foreground truncate">{patient.name}</p>
           <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             WhatsApp · online
@@ -618,10 +603,7 @@ function ChatWhatsApp({
         {mensagens.map((m) => {
           const mine = m.from === "psi";
           return (
-            <div
-              key={m.id}
-              className={`flex ${mine ? "justify-end" : "justify-start"}`}
-            >
+            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                   mine
@@ -635,9 +617,7 @@ function ChatWhatsApp({
                   {mine && m.status === "read" && (
                     <CheckCheck className="h-3 w-3 text-emerald-600" />
                   )}
-                  {mine && m.status === "delivered" && (
-                    <CheckCheck className="h-3 w-3" />
-                  )}
+                  {mine && m.status === "delivered" && <CheckCheck className="h-3 w-3" />}
                   {mine && m.status === "sent" && <Check className="h-3 w-3" />}
                 </div>
               </div>
@@ -647,10 +627,7 @@ function ChatWhatsApp({
       </div>
 
       {/* Input */}
-      <form
-        onSubmit={enviar}
-        className="border-t bg-muted/30 px-3 py-2 flex items-center gap-2"
-      >
+      <form onSubmit={enviar} className="border-t bg-muted/30 px-3 py-2 flex items-center gap-2">
         <MessageCircle className="h-4 w-4 text-muted-foreground shrink-0" />
         <Input
           value={texto}
@@ -675,14 +652,14 @@ type SinteseEditavel = {
   pontos: string;
 };
 
-type ResumoGeral = NonNullable<UiProntuario["resumoGeral"]>;
+type ResumoGeral = NonNullable<UiPatientRecord["generalSummary"]>;
 
 function SinteseClinica({
   pacienteId,
-  resumoGeral,
+  generalSummary,
 }: {
   pacienteId: string;
-  resumoGeral: ResumoGeral;
+  generalSummary: ResumoGeral;
 }) {
   const storageKey = `sintese-prof-${pacienteId}`;
   const [editando, setEditando] = useState(false);
@@ -728,19 +705,17 @@ function SinteseClinica({
     <>
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <h2 className="text-base font-semibold text-foreground">
-          Síntese Clínica do Caso
-        </h2>
+        <h2 className="text-base font-semibold text-foreground">Síntese Clínica do Caso</h2>
       </div>
 
-      <Tabs defaultValue="profissional" className="mt-4">
+      <Tabs defaultValue="professional" className="mt-4">
         <TabsList>
-          <TabsTrigger value="profissional">Profissional</TabsTrigger>
+          <TabsTrigger value="professional">Profissional</TabsTrigger>
           <TabsTrigger value="assistente">Assistente de IA</TabsTrigger>
         </TabsList>
 
         {/* ----- PROFISSIONAL (editável) ----- */}
-        <TabsContent value="profissional" className="space-y-4 mt-4">
+        <TabsContent value="professional" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-2 py-0.5 rounded">
               Seu conteúdo
@@ -810,7 +785,7 @@ function SinteseClinica({
                   onChange={(e) => setDados({ ...dados, evolucao: e.target.value })}
                   rows={3}
                   className="mt-1.5"
-                  placeholder="Como o paciente vem evoluindo..."
+                  placeholder="Como o patient vem evoluindo..."
                 />
               </div>
             </div>
@@ -839,10 +814,10 @@ function SinteseClinica({
             Gerado por IA
           </span>
           <SinteseView
-            sintese={resumoGeral.sintese}
-            temas={resumoGeral.temasRecorrentes}
-            evolucao={resumoGeral.evolucaoGeral}
-            pontos={resumoGeral.pontosAtencao}
+            sintese={generalSummary.sintese}
+            temas={generalSummary.recurringThemes}
+            evolucao={generalSummary.generalProgress}
+            pontos={generalSummary.attentionPoints}
           />
         </TabsContent>
       </Tabs>
@@ -863,9 +838,7 @@ function SinteseView({
 }) {
   return (
     <div>
-      {sintese && (
-        <p className="text-sm text-foreground leading-relaxed">{sintese}</p>
-      )}
+      {sintese && <p className="text-sm text-foreground leading-relaxed">{sintese}</p>}
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div>
@@ -877,10 +850,7 @@ function SinteseView({
               <li className="text-sm text-muted-foreground italic">—</li>
             ) : (
               temas.map((t) => (
-                <li
-                  key={t}
-                  className="text-sm text-foreground flex items-start gap-2"
-                >
+                <li key={t} className="text-sm text-foreground flex items-start gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                   {t}
                 </li>
@@ -897,10 +867,7 @@ function SinteseView({
               <li className="text-sm text-muted-foreground italic">—</li>
             ) : (
               pontos.map((t) => (
-                <li
-                  key={t}
-                  className="text-sm text-foreground flex items-start gap-2"
-                >
+                <li key={t} className="text-sm text-foreground flex items-start gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-chart-5 shrink-0" />
                   {t}
                 </li>
@@ -957,7 +924,7 @@ function ProfissionalAssistenteTexto({
   iaConteudo: string;
   placeholder: string;
   emptyLabel: string;
-  aba: "profissional" | "assistente";
+  aba: "professional" | "assistente";
 }) {
   const [valor, setValor] = useLocalString(storageKey);
   const [editando, setEditando] = useState(false);
@@ -974,7 +941,7 @@ function ProfissionalAssistenteTexto({
 
   return (
     <Tabs value={aba} className="mt-3">
-      <TabsContent value="profissional" className="space-y-3 mt-3">
+      <TabsContent value="professional" className="space-y-3 mt-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-2 py-0.5 rounded">
             Seu conteúdo
@@ -1002,9 +969,7 @@ function ProfissionalAssistenteTexto({
             placeholder={placeholder}
           />
         ) : valor ? (
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {valor}
-          </p>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{valor}</p>
         ) : (
           <div className="rounded-lg border border-dashed p-4 text-center">
             <p className="text-sm text-muted-foreground">{emptyLabel}</p>
@@ -1024,20 +989,20 @@ function ProfissionalAssistenteTexto({
 
 function ConclusoesProfAssistente({
   storageKey,
-  conclusoesIA,
+  aiConclusions,
   insights,
   abordagem,
   setAbordagem,
   aba,
 }: {
   storageKey: string;
-  conclusoesIA: UiSessao["conclusoesIA"];
+  aiConclusions: UiSession["aiConclusions"];
   insights: string[];
   abordagem: Abordagem;
   setAbordagem: (a: Abordagem) => void;
-  aba: "profissional" | "assistente";
+  aba: "professional" | "assistente";
 }) {
-  type ResumoGeral = NonNullable<UiProntuario["resumoGeral"]>;
+  type ResumoGeral = NonNullable<UiPatientRecord["generalSummary"]>;
   const [valor, setValor] = useLocalString(storageKey);
   const [editando, setEditando] = useState(false);
   const [rascunho, setRascunho] = useState("");
@@ -1057,7 +1022,7 @@ function ConclusoesProfAssistente({
 
   return (
     <Tabs value={aba} className="mt-3">
-      <TabsContent value="profissional" className="space-y-4 mt-3">
+      <TabsContent value="professional" className="space-y-4 mt-3">
         {/* Conclusões do profissional */}
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -1087,9 +1052,7 @@ function ConclusoesProfAssistente({
               placeholder="Escreva suas conclusões clínicas sobre a sessão..."
             />
           ) : valor ? (
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-              {valor}
-            </p>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{valor}</p>
           ) : (
             <div className="rounded-lg border border-dashed p-4 text-center">
               <p className="text-sm text-muted-foreground">
@@ -1110,12 +1073,25 @@ function ConclusoesProfAssistente({
                 <Button variant="ghost" size="sm" onClick={() => setEditandoInsights(false)}>
                   Cancelar
                 </Button>
-                <Button size="sm" onClick={() => { setValorInsights(rascunhoInsights); setEditandoInsights(false); }}>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setValorInsights(rascunhoInsights);
+                    setEditandoInsights(false);
+                  }}
+                >
                   Salvar
                 </Button>
               </div>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => { setRascunhoInsights(valorInsights); setEditandoInsights(true); }}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setRascunhoInsights(valorInsights);
+                  setEditandoInsights(true);
+                }}
+              >
                 {valorInsights ? "Editar" : "Preencher"}
               </Button>
             )}
@@ -1162,9 +1138,7 @@ function ConclusoesProfAssistente({
             </Select>
           </div>
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
-            <p className="text-sm text-foreground leading-relaxed">
-              {conclusoesIA?.[abordagem]}
-            </p>
+            <p className="text-sm text-foreground leading-relaxed">{aiConclusions?.[abordagem]}</p>
           </div>
         </div>
 

@@ -1,17 +1,17 @@
 import type {
   AgendaEntry,
-  ExercicioTemplate,
-  Paciente,
+  ExerciseTemplate,
+  Patient,
   PatientStatus,
-  Prontuario,
-  RegistroHumor,
-  ResumoGeral,
-  Sessao,
+  PatientRecord,
+  MoodRecord,
+  GeneralSummary,
+  Session,
   SessionType,
-  TarefaPrescrita,
+  PrescribedTask,
   TaskStatus,
   TaskType,
-  TranscricaoResult,
+  TranscriptionResult,
 } from "@/lib/ui-types";
 
 type ApiPatient = {
@@ -95,42 +95,35 @@ type ApiTranscription = {
 function normalizePatientStatus(status: string | undefined): PatientStatus {
   switch (status) {
     case "active":
-    case "ativo":
-      return "ativo";
-    case "discharged":
-    case "alta":
-      return "alta";
-    case "inactive":
+      return "active";
     case "archived":
-    case "inativo":
+      return "archived";
+    case "discharged":
+      return "discharged";
+    case "inactive":
     default:
-      return "inativo";
+      return "inactive";
   }
 }
 
 function normalizeSessionType(type: string | undefined): SessionType {
   switch (type) {
     case "inPerson":
-    case "presencial":
-      return "presencial";
+      return "inPerson";
     case "remote":
-    case "remota":
     default:
-      return "remota";
+      return "remote";
   }
 }
 
 function normalizeTaskType(type: string | undefined): TaskType {
   switch (type) {
     case "exercise":
-    case "exercicio":
-      return "exercicio";
+      return "exercise";
     case "journal":
-    case "diario":
-      return "diario";
+      return "journal";
     case "habit":
-    case "habito":
-      return "habito";
+      return "habit";
     case "audio":
     default:
       return "audio";
@@ -140,38 +133,33 @@ function normalizeTaskType(type: string | undefined): TaskType {
 function normalizeTaskStatus(status: string | undefined): TaskStatus {
   switch (status) {
     case "completed":
-    case "concluida":
-      return "concluida";
+      return "completed";
     case "approved":
-    case "aprovada":
-      return "aprovada";
+      return "approved";
     case "pending":
-    case "pendente":
     default:
-      return "pendente";
+      return "pending";
   }
 }
 
-function normalizeMoodSource(source: string | undefined): RegistroHumor["fonte"] {
+function normalizeMoodSource(source: string | undefined): MoodRecord["source"] {
   switch (source) {
     case "patient":
-    case "paciente":
-      return "paciente";
+      return "patient";
     case "professional":
-    case "profissional":
     default:
-      return "profissional";
+      return "professional";
   }
 }
 
-function normalizeGeneralSummary(summary: unknown): ResumoGeral | null {
+function normalizeGeneralSummary(summary: unknown): GeneralSummary | null {
   if (!summary) return null;
   if (typeof summary === "string") {
     return {
       sintese: summary,
-      temasRecorrentes: [],
-      evolucaoGeral: "",
-      pontosAtencao: [],
+      recurringThemes: [],
+      generalProgress: "",
+      attentionPoints: [],
     };
   }
 
@@ -185,9 +173,9 @@ function normalizeGeneralSummary(summary: unknown): ResumoGeral | null {
 
   return {
     sintese: String(value.sintese ?? value.summary ?? ""),
-    temasRecorrentes: toStringArray(value.temasRecorrentes ?? value.recurringThemes),
-    evolucaoGeral: String(value.evolucaoGeral ?? value.generalProgress ?? ""),
-    pontosAtencao: toStringArray(value.pontosAtencao ?? value.attentionPoints),
+    recurringThemes: toStringArray(value.temasRecorrentes ?? value.recurringThemes),
+    generalProgress: String(value.evolucaoGeral ?? value.generalProgress ?? ""),
+    attentionPoints: toStringArray(value.pontosAtencao ?? value.attentionPoints),
   };
 }
 
@@ -213,117 +201,99 @@ function calculateAgeFromBirthDate(birthDate: string | null | undefined): number
   return Math.max(age, 0);
 }
 
-export function normalizePatient(patient: ApiPatient): Paciente {
+export function normalizePatient(patient: ApiPatient): Patient {
   const calculatedAge = calculateAgeFromBirthDate(patient.birthDate);
 
   return {
     id: patient.id,
-    nome: patient.name ?? "",
+    name: patient.name ?? "",
     email: patient.email ?? "",
-    idade: calculatedAge ?? 0,
-    dataNascimento: patient.birthDate ?? undefined,
-    inicioTratamento: patient.treatmentStartDate ?? "",
+    age: calculatedAge ?? 0,
+    birthDate: patient.birthDate ?? undefined,
+    treatmentStartDate: patient.treatmentStartDate ?? "",
     status: normalizePatientStatus(patient.status),
-    ultimaSessao: patient.lastSession ?? "",
-    proximaSessao: patient.nextSession ?? "",
-    proximaSessaoHora: patient.nextSessionHour ?? undefined,
-    humorMedio: Number(patient.averageMood ?? 0),
-    diarioCount: Number(patient.journalCount ?? 0),
-    foto: patient.avatarUrl ?? undefined,
+    lastSession: patient.lastSession ?? "",
+    nextSession: patient.nextSession ?? "",
+    nextSessionHour: patient.nextSessionHour ?? undefined,
+    averageMood: Number(patient.averageMood ?? 0),
+    journalCount: Number(patient.journalCount ?? 0),
+    avatarUrl: patient.avatarUrl ?? undefined,
   };
 }
 
-export function normalizeSession(session: ApiSession): Sessao {
+export function normalizeSession(session: ApiSession): Session {
   return {
     id: session.id,
-    pacienteId: session.patientId,
-    data: session.date,
-    tipo: normalizeSessionType(session.type),
-    duracao: Number(session.duration ?? 0),
-    resumo: session.summary ?? "",
+    patientId: session.patientId,
+    date: session.date,
+    type: normalizeSessionType(session.type),
+    duration: Number(session.duration ?? 0),
+    summary: session.summary ?? "",
     insights: Array.isArray(session.insights) ? session.insights : [],
-    humorInicio: Number(session.moodStart ?? 0),
-    humorFim: Number(session.moodEnd ?? 0),
-    temTranscricao: Boolean(session.hasTranscription),
-    transcricao: session.transcription ?? undefined,
+    moodStart: Number(session.moodStart ?? 0),
+    moodEnd: Number(session.moodEnd ?? 0),
+    hasTranscription: Boolean(session.hasTranscription),
+    transcription: session.transcription ?? undefined,
     audioS3Key: session.audioS3Key ?? undefined,
     transcriptionS3Key: session.transcriptionS3Key ?? undefined,
   };
 }
 
-export function normalizeMoodRecord(record: ApiMoodRecord): RegistroHumor {
+export function normalizeMoodRecord(record: ApiMoodRecord): MoodRecord {
   return {
-    data: record.date,
-    valor: Number(record.value ?? 0),
-    fonte: normalizeMoodSource(record.source),
+    date: record.date,
+    value: Number(record.value ?? 0),
+    source: normalizeMoodSource(record.source),
   };
 }
 
-export function normalizeTask(task: ApiTask): TarefaPrescrita {
+export function normalizeTask(task: ApiTask): PrescribedTask {
   return {
     id: task.id,
-    pacienteId: task.patientId,
-    titulo: task.title ?? "",
-    descricao: task.description ?? "",
-    tipo: normalizeTaskType(task.type),
+    patientId: task.patientId,
+    title: task.title ?? "",
+    description: task.description ?? "",
+    type: normalizeTaskType(task.type),
     status: normalizeTaskStatus(task.status),
-    dataPrescricao: task.prescribedAt ?? "",
-    dataConclusao: task.completedAt ?? undefined,
+    prescribedAt: task.prescribedAt ?? "",
+    completedAt: task.completedAt ?? undefined,
   };
 }
 
-export function normalizeExercise(exercise: ApiExercise): ExercicioTemplate {
+export function normalizeExercise(exercise: ApiExercise): ExerciseTemplate {
   return {
     id: exercise.id,
-    titulo: exercise.title ?? "",
-    descricao: exercise.description ?? "",
-    tipo: normalizeTaskType(exercise.type),
+    title: exercise.title ?? "",
+    description: exercise.description ?? "",
+    type: normalizeTaskType(exercise.type),
   };
 }
 
-export function normalizePatientRecord(record: ApiPatientRecord): Prontuario {
+export function normalizePatientRecord(record: ApiPatientRecord): PatientRecord {
   return {
-    paciente: normalizePatient(record.patient),
-    sessoes: (record.sessions ?? []).map(normalizeSession),
-    registrosHumor: (record.moodRecords ?? []).map(normalizeMoodRecord),
-    diagnosticos: Array.isArray(record.diagnoses) ? record.diagnoses : [],
-    observacoes: record.notes ?? "",
-    resumoGeral: normalizeGeneralSummary(record.generalSummary),
+    patient: normalizePatient(record.patient),
+    sessions: (record.sessions ?? []).map(normalizeSession),
+    moodRecords: (record.moodRecords ?? []).map(normalizeMoodRecord),
+    diagnoses: Array.isArray(record.diagnoses) ? record.diagnoses : [],
+    notes: record.notes ?? "",
+    generalSummary: normalizeGeneralSummary(record.generalSummary),
   };
 }
 
 export function normalizeAgendaEntry(entry: ApiAgendaEntry): AgendaEntry {
   return {
-    diaOffset: Number(entry.dayOffset ?? 0),
-    hora: Number(entry.hour ?? 0),
-    pacienteId: entry.patientId,
-    tipo: normalizeSessionType(entry.type),
+    dayOffset: Number(entry.dayOffset ?? 0),
+    hour: Number(entry.hour ?? 0),
+    patientId: entry.patientId,
+    type: normalizeSessionType(entry.type),
   };
 }
 
-export function normalizeTranscription(value: ApiTranscription): TranscricaoResult {
+export function normalizeTranscription(value: ApiTranscription): TranscriptionResult {
   return {
-    resumo: value.summary ?? "",
+    summary: value.summary ?? "",
     insights: Array.isArray(value.insights) ? value.insights : [],
-    tarefas: Array.isArray(value.tasks) ? value.tasks : [],
-    transcricao: value.transcription ?? undefined,
+    tasks: Array.isArray(value.tasks) ? value.tasks : [],
+    transcription: value.transcription ?? undefined,
   };
-}
-
-export function toApiSessionType(type: SessionType): "inPerson" | "remote" {
-  return type === "presencial" ? "inPerson" : "remote";
-}
-
-export function toApiTaskType(type: TaskType): "exercise" | "audio" | "journal" | "habit" {
-  switch (type) {
-    case "exercicio":
-      return "exercise";
-    case "diario":
-      return "journal";
-    case "habito":
-      return "habit";
-    case "audio":
-    default:
-      return "audio";
-  }
 }

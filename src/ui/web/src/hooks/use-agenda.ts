@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { normalizeAgendaEntry, normalizeTranscription } from "@/lib/api-normalizers";
 import { apiFetch } from "@/lib/api";
-import type { AgendaEntry, TranscricaoResult } from "@/lib/ui-types";
+import type { AgendaEntry, TranscriptionResult } from "@/lib/ui-types";
 
 async function fetchAgendaSessoes(): Promise<AgendaEntry[]> {
   const res = await apiFetch("/api/sessions/agenda");
@@ -10,8 +10,8 @@ async function fetchAgendaSessoes(): Promise<AgendaEntry[]> {
   return Array.isArray(data) ? data.map(normalizeAgendaEntry) : [];
 }
 
-async function fetchTranscricao(pacienteId: string): Promise<TranscricaoResult> {
-  const res = await apiFetch(`/api/patients/${pacienteId}/transcription`);
+async function fetchTranscricao(patientId: string): Promise<TranscriptionResult> {
+  const res = await apiFetch(`/api/patients/${patientId}/transcription`);
   if (!res.ok) throw new Error("Transcrição não encontrada");
   const data = await res.json();
   return normalizeTranscription(data);
@@ -24,10 +24,10 @@ export function useAgendaSessoes() {
   });
 }
 
-export function useTranscricao(pacienteId: string, enabled: boolean) {
+export function useTranscricao(patientId: string, enabled: boolean) {
   return useQuery({
-    queryKey: ["transcricao", pacienteId],
-    queryFn: () => fetchTranscricao(pacienteId),
-    enabled: !!pacienteId && enabled,
+    queryKey: ["transcricao", patientId],
+    queryFn: () => fetchTranscricao(patientId),
+    enabled: !!patientId && enabled,
   });
 }

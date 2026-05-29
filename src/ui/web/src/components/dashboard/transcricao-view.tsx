@@ -32,22 +32,20 @@ import { toast } from "sonner";
 export function TranscricaoView() {
   const [pacienteId, setPacienteId] = useState<string>("");
   const [sessaoId, setSessaoId] = useState<string>("");
-  const [status, setStatus] = useState<
-    "idle" | "uploading" | "processing" | "done"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "uploading" | "processing" | "done">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   const { data: allPacientes = [] } = usePacientes();
-  const pacientesAtivos = allPacientes.filter((p) => p.status === "ativo");
+  const pacientesAtivos = allPacientes.filter((p) => p.status === "active");
   const { data: prontuario } = useProntuario(pacienteId);
   const sessoesOrdenadas = useMemo(
     () =>
-      [...(prontuario?.sessoes || [])].sort(
-        (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()
+      [...(prontuario?.sessions || [])].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       ),
-    [prontuario]
+    [prontuario],
   );
   const { data: transcricao } = useTranscricao(pacienteId, status === "done");
 
@@ -80,7 +78,7 @@ export function TranscricaoView() {
       const { audioS3Key } = await uploadSessionAudioAndMarkProcessing(
         pacienteId,
         effectiveSessionId,
-        file
+        file,
       );
 
       setStatus("processing");
@@ -94,7 +92,7 @@ export function TranscricaoView() {
         effectiveSessionId,
         pacienteId,
         generatedTranscript,
-        audioS3Key
+        audioS3Key,
       );
 
       setStatus("done");
@@ -116,7 +114,7 @@ export function TranscricaoView() {
   };
 
   const handleEnviarTarefas = () => {
-    toast.success("Tarefas enviadas para o app do paciente com sucesso.");
+    toast.success("Tarefas enviadas para o app do patient com sucesso.");
   };
 
   return (
@@ -127,11 +125,12 @@ export function TranscricaoView() {
           Transcrição e Resumo IA
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Faça upload do áudio da sessão e receba um resumo executivo com insights e prescrições automáticas.
+          Faça upload do áudio da sessão e receba um resumo executivo com insights e prescrições
+          automáticas.
         </p>
       </div>
 
-      {/* Seletor de paciente + Upload */}
+      {/* Seletor de patient + Upload */}
       <div className="rounded-xl border bg-card p-6 shadow-sm">
         <input
           ref={audioInputRef}
@@ -154,12 +153,12 @@ export function TranscricaoView() {
               }}
             >
               <SelectTrigger className="mt-1.5 w-full">
-                <SelectValue placeholder="Selecionar paciente" />
+                <SelectValue placeholder="Selecionar patient" />
               </SelectTrigger>
               <SelectContent>
                 {pacientesAtivos.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.nome}
+                    {p.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -167,7 +166,10 @@ export function TranscricaoView() {
           </div>
           <div className="flex-1">
             <label className="text-sm font-medium text-foreground">Sessão</label>
-            <Select value={sessaoId || "AUTO"} onValueChange={(v) => setSessaoId(v === "AUTO" ? "" : v)}>
+            <Select
+              value={sessaoId || "AUTO"}
+              onValueChange={(v) => setSessaoId(v === "AUTO" ? "" : v)}
+            >
               <SelectTrigger className="mt-1.5 w-full">
                 <SelectValue placeholder="Criar automaticamente" />
               </SelectTrigger>
@@ -175,17 +177,13 @@ export function TranscricaoView() {
                 <SelectItem value="AUTO">Criar automaticamente</SelectItem>
                 {sessoesOrdenadas.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.data} · {s.tipo}
+                    {s.date} · {s.type}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <Button
-            onClick={handleUpload}
-            disabled={status !== "idle"}
-            className="gap-2"
-          >
+          <Button onClick={handleUpload} disabled={status !== "idle"} className="gap-2">
             {status === "idle" && <Upload className="h-4 w-4" />}
             {status === "uploading" && <Loader2 className="h-4 w-4 animate-spin" />}
             {status === "processing" && <Sparkles className="h-4 w-4 animate-pulse" />}
@@ -199,7 +197,7 @@ export function TranscricaoView() {
 
         {status === "idle" && (
           <p className="mt-3 text-xs text-muted-foreground">
-            Nota: O paciente deve ter assinado o termo de consentimento para gravação de áudio.
+            Nota: O patient deve ter assinado o termo de consentimento para gravação de áudio.
           </p>
         )}
         {errorMessage && <p className="mt-3 text-xs text-amber-600">{errorMessage}</p>}
@@ -214,9 +212,7 @@ export function TranscricaoView() {
               <FileText className="h-4 w-4 text-primary" />
               Resumo Executivo do Prontuário
             </h2>
-            <p className="mt-3 text-sm text-foreground leading-relaxed">
-              {transcricao.resumo}
-            </p>
+            <p className="mt-3 text-sm text-foreground leading-relaxed">{transcricao.summary}</p>
           </div>
 
           {/* Insights */}
@@ -227,10 +223,7 @@ export function TranscricaoView() {
             </h2>
             <div className="mt-3 space-y-2">
               {transcricao.insights.map((insight, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 rounded-lg border p-3 bg-accent/30"
-                >
+                <div key={i} className="flex items-start gap-3 rounded-lg border p-3 bg-accent/30">
                   <div className="mt-1 h-2 w-2 rounded-full bg-chart-4 shrink-0" />
                   <p className="text-sm text-foreground">{insight}</p>
                 </div>
@@ -245,14 +238,12 @@ export function TranscricaoView() {
               Prescrição Automatizada de Tarefas
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Sugestões geradas pela IA baseadas no conteúdo da sessão. Aprove e envie diretamente para o app do paciente.
+              Sugestões geradas pela IA baseadas no conteúdo da sessão. Aprove e envie diretamente
+              para o app do patient.
             </p>
             <div className="mt-4 space-y-3">
-              {transcricao.tarefas.map((tarefa, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 rounded-lg border p-3"
-                >
+              {transcricao.tasks.map((tarefa, i) => (
+                <div key={i} className="flex items-start gap-3 rounded-lg border p-3">
                   <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded border bg-background shrink-0">
                     <CheckCircle className="h-3.5 w-3.5 text-primary" />
                   </div>
@@ -263,7 +254,7 @@ export function TranscricaoView() {
             <div className="mt-4 flex justify-end">
               <Button onClick={handleEnviarTarefas} className="gap-2">
                 <Send className="h-4 w-4" />
-                Aprovar e enviar para paciente
+                Aprovar e enviar para patient
               </Button>
             </div>
           </div>
@@ -273,7 +264,7 @@ export function TranscricaoView() {
       {status === "done" && !transcricao && (
         <div className="rounded-xl border bg-card p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            Nenhuma transcrição mockada disponível para este paciente.
+            Nenhuma transcrição mockada disponível para este patient.
           </p>
         </div>
       )}

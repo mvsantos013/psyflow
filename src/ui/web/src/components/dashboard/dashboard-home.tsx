@@ -18,16 +18,28 @@ import { useAgendaSessoes } from "@/hooks/use-agenda";
 import { formatHora, formatDiaLabel, startOfWeek } from "@/lib/utils";
 
 const DIAS_SEMANA = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-const HORAS = ["08:00", "09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
+const HORAS = [
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+  "19:00",
+];
 
 function formatDiaMes(d: Date) {
   return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}`;
 }
 
 type SessaoAgendada = {
-  paciente: { id: string; nome: string; foto?: string };
+  patient: { id: string; name: string; avatarUrl?: string };
   quando: Date;
-  tipo: "remota" | "presencial";
+  tipo: "remote" | "inPerson";
 };
 
 export function DashboardHome() {
@@ -35,20 +47,17 @@ export function DashboardHome() {
   const { isPaid } = usePagamentos();
   const { data: pacientes = [] } = usePacientes();
   const { data: agendaTemplate = [] } = useAgendaSessoes();
-  const pacientesAtivos = pacientes.filter((p) => p.status === "ativo");
-  const pacientesMap = useMemo(
-    () => new Map(pacientes.map((p) => [p.id, p])),
-    [pacientes]
-  );
+  const pacientesAtivos = pacientes.filter((p) => p.status === "active");
+  const pacientesMap = useMemo(() => new Map(pacientes.map((p) => [p.id, p])), [pacientes]);
 
   const sessoesSemana: SessaoAgendada[] = useMemo(() => {
     return agendaTemplate.flatMap((s) => {
-      const p = pacientesMap.get(s.pacienteId);
+      const p = pacientesMap.get(s.patientId);
       if (!p) return [];
       const d = new Date(weekStart);
-      d.setDate(d.getDate() + s.diaOffset);
-      d.setHours(s.hora, 0, 0, 0);
-      return [{ paciente: p, quando: d, tipo: s.tipo }];
+      d.setDate(d.getDate() + s.dayOffset);
+      d.setHours(s.hour, 0, 0, 0);
+      return [{ patient: p, quando: d, tipo: s.type }];
     });
   }, [weekStart, pacientesMap, agendaTemplate]);
 
@@ -58,21 +67,19 @@ export function DashboardHome() {
     const lista: SessaoAgendada[] = [];
     for (let w = 0; w < 3; w++) {
       for (const s of agendaTemplate) {
-        const p = pacientesMap.get(s.pacienteId);
+        const p = pacientesMap.get(s.patientId);
         if (!p) continue;
         const d = new Date(inicioHoje);
-        d.setDate(d.getDate() + w * 7 + s.diaOffset);
-        d.setHours(s.hora, 0, 0, 0);
-        if (d >= agora) lista.push({ paciente: p, quando: d, tipo: s.tipo });
+        d.setDate(d.getDate() + w * 7 + s.dayOffset);
+        d.setHours(s.hour, 0, 0, 0);
+        if (d >= agora) lista.push({ patient: p, quando: d, tipo: s.type });
       }
     }
-    return lista
-      .sort((a, b) => a.quando.getTime() - b.quando.getTime())
-      .slice(0, 6);
+    return lista.sort((a, b) => a.quando.getTime() - b.quando.getTime()).slice(0, 6);
   }, [pacientesMap, agendaTemplate]);
 
   const sessoesHoje = sessoesSemana.filter(
-    (s) => s.quando.toDateString() === new Date().toDateString()
+    (s) => s.quando.toDateString() === new Date().toDateString(),
   ).length;
 
   const stats = [
@@ -131,18 +138,11 @@ export function DashboardHome() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-xl border bg-card p-5 shadow-sm"
-          >
+          <div key={stat.label} className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  {stat.label}
-                </p>
-                <p className="mt-1 text-3xl font-semibold text-foreground">
-                  {stat.value}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                <p className="mt-1 text-3xl font-semibold text-foreground">{stat.value}</p>
               </div>
               <div className={`rounded-lg p-2.5 ${stat.color}`}>
                 <stat.icon className="h-5 w-5" />
@@ -157,9 +157,7 @@ export function DashboardHome() {
         {/* Lista de Próximas Sessões */}
         <div className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-1">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">
-              Próximas Sessões
-            </h2>
+            <h2 className="text-base font-semibold text-foreground">Próximas Sessões</h2>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="mt-4 space-y-2">
@@ -172,20 +170,18 @@ export function DashboardHome() {
               <Link
                 key={i}
                 to="/dashboard/pacientes/$id"
-                params={{ id: s.paciente.id }}
+                params={{ id: s.patient.id }}
                 className="flex items-center gap-3 rounded-lg border p-3 hover:border-primary/40 hover:bg-primary/5 transition-colors"
               >
                 <img
-                  src={s.paciente.foto}
-                  alt={s.paciente.nome}
+                  src={s.patient.avatarUrl}
+                  alt={s.patient.name}
                   className="h-9 w-9 rounded-full bg-muted object-cover shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {s.paciente.nome}
-                  </p>
+                  <p className="text-sm font-medium text-foreground truncate">{s.patient.name}</p>
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                    {s.tipo === "remota" ? (
+                    {s.tipo === "remote" ? (
                       <Video className="h-3 w-3" />
                     ) : (
                       <MapPin className="h-3 w-3" />
@@ -202,9 +198,7 @@ export function DashboardHome() {
         <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
-              <h2 className="text-base font-semibold text-foreground">
-                Agenda da Semana
-              </h2>
+              <h2 className="text-base font-semibold text-foreground">Agenda da Semana</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {formatDiaMes(weekStart)} — {formatDiaMes(fimSemana)}
               </p>
@@ -250,10 +244,7 @@ export function DashboardHome() {
 
               <div className="border rounded-md overflow-hidden">
                 {HORAS.map((hora) => (
-                  <div
-                    key={hora}
-                    className="grid grid-cols-[48px_repeat(7,1fr)] gap-px bg-border"
-                  >
+                  <div key={hora} className="grid grid-cols-[48px_repeat(7,1fr)] gap-px bg-border">
                     <div className="bg-card px-1.5 py-2 text-[10px] text-muted-foreground">
                       {hora}
                     </div>
@@ -262,39 +253,38 @@ export function DashboardHome() {
                       const sessao = sessoesSemana.find(
                         (s) =>
                           s.quando.toDateString() === dia.toDateString() &&
-                          s.quando.getHours() === horaNum
+                          s.quando.getHours() === horaNum,
                       );
                       return (
                         <div key={di} className="bg-card min-h-[42px] relative">
-                          {sessao && (
+                          {sessao &&
                             (() => {
                               const pago = isPaid(
                                 agendaSessaoId({
                                   data: sessao.quando,
                                   hora: horaNum,
-                                  pacienteId: sessao.paciente.id,
-                                })
+                                  pacienteId: sessao.patient.id,
+                                }),
                               );
                               const styles = pago
                                 ? "bg-emerald-500/15 border border-emerald-500/50 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400"
-                                : sessao.tipo === "remota"
-                                ? "bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary"
-                                : "bg-chart-3/10 border border-chart-3/30 hover:bg-chart-3/20 text-chart-3";
+                                : sessao.tipo === "remote"
+                                  ? "bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary"
+                                  : "bg-chart-3/10 border border-chart-3/30 hover:bg-chart-3/20 text-chart-3";
                               return (
                                 <Link
                                   to="/dashboard/pacientes/$id"
-                                  params={{ id: sessao.paciente.id }}
+                                  params={{ id: sessao.patient.id }}
                                   className={`absolute inset-0.5 rounded-md px-1.5 py-1 transition-colors flex flex-col justify-center ${styles}`}
                                   title={pago ? "Sessão paga" : "Sessão não paga"}
                                 >
                                   <p className="text-[10px] font-medium leading-tight truncate">
                                     {pago ? "✓ " : ""}
-                                    {sessao.paciente.nome.split(" ")[0]}
+                                    {sessao.patient.name.split(" ")[0]}
                                   </p>
                                 </Link>
                               );
-                            })()
-                          )}
+                            })()}
                         </div>
                       );
                     })}

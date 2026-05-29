@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { normalizeExercise, toApiTaskType } from "@/lib/api-normalizers";
+import { normalizeExercise } from "@/lib/api-normalizers";
 import { apiFetch } from "@/lib/api";
-import type { ExercicioTemplate } from "@/lib/ui-types";
+import type { ExerciseTemplate } from "@/lib/ui-types";
 
-async function fetchExercicios(): Promise<ExercicioTemplate[]> {
+async function fetchExercicios(): Promise<ExerciseTemplate[]> {
   const res = await apiFetch("/api/exercises");
   if (!res.ok) throw new Error("Erro ao buscar exercícios");
   const data = await res.json();
@@ -18,19 +18,19 @@ export function useExercicios() {
 }
 
 export type NovoExercicioInput = {
-  titulo: string;
-  descricao: string;
-  tipo: ExercicioTemplate["tipo"];
+  title: string;
+  description: string;
+  type: ExerciseTemplate["type"];
 };
 
-async function postNovoExercicio(input: NovoExercicioInput): Promise<ExercicioTemplate> {
+async function postNovoExercicio(input: NovoExercicioInput): Promise<ExerciseTemplate> {
   const res = await apiFetch("/api/exercises", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      title: input.titulo,
-      description: input.descricao,
-      type: toApiTaskType(input.tipo),
+      title: input.title,
+      description: input.description,
+      type: input.type,
     }),
   });
   if (!res.ok) throw new Error("Erro ao criar exercício");

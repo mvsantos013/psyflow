@@ -1,74 +1,68 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  normalizePatientRecord,
-  normalizeSession,
-  normalizeTask,
-  toApiSessionType,
-  toApiTaskType,
-} from "@/lib/api-normalizers";
+import { normalizePatientRecord, normalizeSession, normalizeTask } from "@/lib/api-normalizers";
 import { apiFetch } from "@/lib/api";
-import type { Prontuario, TarefaPrescrita, Sessao } from "@/lib/ui-types";
+import type { PatientRecord, PrescribedTask, Session } from "@/lib/ui-types";
 
-type ProntuarioComResumo = Prontuario;
+type PatientRecordWithSummary = PatientRecord;
 
-async function fetchProntuario(id: string): Promise<ProntuarioComResumo> {
+async function fetchPatientRecord(id: string): Promise<PatientRecordWithSummary> {
   const res = await apiFetch(`/api/patients/${id}/record`);
   if (!res.ok) throw new Error("Prontuário não encontrado");
   const data = await res.json();
   return normalizePatientRecord(data);
 }
 
-async function fetchTarefas(id: string): Promise<TarefaPrescrita[]> {
+async function fetchTasks(id: string): Promise<PrescribedTask[]> {
   const res = await apiFetch(`/api/patients/${id}/tasks`);
   if (!res.ok) throw new Error("Tarefas não encontradas");
   const data = await res.json();
   return Array.isArray(data) ? data.map(normalizeTask) : [];
 }
 
-export function useProntuario(pacienteId: string) {
+export function useProntuario(patientId: string) {
   return useQuery({
-    queryKey: ["prontuario", pacienteId],
-    queryFn: () => fetchProntuario(pacienteId),
-    enabled: !!pacienteId,
+    queryKey: ["prontuario", patientId],
+    queryFn: () => fetchPatientRecord(patientId),
+    enabled: !!patientId,
   });
 }
 
-export function useTarefas(pacienteId: string) {
+export function useTarefas(patientId: string) {
   return useQuery({
-    queryKey: ["tarefas", pacienteId],
-    queryFn: () => fetchTarefas(pacienteId),
-    enabled: !!pacienteId,
+    queryKey: ["tarefas", patientId],
+    queryFn: () => fetchTasks(patientId),
+    enabled: !!patientId,
   });
 }
 
 /** Payload sent to POST /api/patients/:id/sessions. */
 export type NovaSessaoInput = {
-  data: string;
-  tipo: "presencial" | "remota";
-  duracao: number;
-  humorInicio?: number;
-  humorFim?: number;
-  resumo?: string;
+  date: string;
+  type: "inPerson" | "remote";
+  duration: number;
+  moodStart?: number;
+  moodEnd?: number;
+  summary?: string;
 };
 
 /** Payload sent to POST /api/patients/:id/tasks. */
 export type NovaTarefaInput = {
-  titulo: string;
-  descricao: string;
-  tipo: TarefaPrescrita["tipo"];
+  title: string;
+  description: string;
+  type: PrescribedTask["type"];
 };
 
-async function postNovaSessao(pacienteId: string, input: NovaSessaoInput): Promise<Sessao> {
-  const res = await apiFetch(`/api/patients/${pacienteId}/sessions`, {
+async function postNovaSessao(patientId: string, input: NovaSessaoInput): Promise<Session> {
+  const res = await apiFetch(`/api/patients/${patientId}/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      date: input.data,
-      type: toApiSessionType(input.tipo),
-      duration: input.duracao,
-      moodStart: input.humorInicio,
-      moodEnd: input.humorFim,
-      summary: input.resumo,
+      date: input.date,
+      type: input.type,
+      duration: input.duration,
+      moodStart: input.moodStart,
+      moodEnd: input.moodEnd,
+      summary: input.summary,
     }),
   });
   if (!res.ok) throw new Error("Erro ao criar sessão");
@@ -81,24 +75,24 @@ async function postNovaSessao(pacienteId: string, input: NovaSessaoInput): Promi
  * Automatically invalidates the prontuário cache on success
  * so the session list refreshes without a manual reload.
  */
-export function useAddSessao(pacienteId: string) {
+export function useAddSessao(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: NovaSessaoInput) => postNovaSessao(pacienteId, input),
+    mutationFn: (input: NovaSessaoInput) => postNovaSessao(patientId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["prontuario", pacienteId] });
+      queryClient.invalidateQueries({ queryKey: ["prontuario", patientId] });
     },
   });
 }
 
-async function postNovaTarefa(pacienteId: string, input: NovaTarefaInput): Promise<TarefaPrescrita> {
-  const res = await apiFetch(`/api/patients/${pacienteId}/tasks`, {
+async function postNovaTarefa(patientId: string, input: NovaTarefaInput): Promise<PrescribedTask> {
+  const res = await apiFetch(`/api/patients/${patientId}/tasks`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      title: input.titulo,
-      description: input.descricao,
-      type: toApiTaskType(input.tipo),
+      title: input.title,
+      description: input.description,
+      type: input.type,
     }),
   });
   if (!res.ok) throw new Error("Erro ao criar tarefa");
@@ -106,12 +100,12 @@ async function postNovaTarefa(pacienteId: string, input: NovaTarefaInput): Promi
   return normalizeTask(data);
 }
 
-export function useAddTarefa(pacienteId: string) {
+export function useAddTarefa(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: NovaTarefaInput) => postNovaTarefa(pacienteId, input),
+    mutationFn: (input: NovaTarefaInput) => postNovaTarefa(patientId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tarefas", pacienteId] });
+      queryClient.invalidateQueries({ queryKey: ["tarefas", patientId] });
     },
   });
 }

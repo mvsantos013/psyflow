@@ -25,18 +25,18 @@ import { useCreatePaciente, usePacientes } from "@/hooks/use-pacientes";
 import { formatDataCurta } from "@/lib/utils";
 
 type NovoPacienteFormState = {
-  nome: string;
+  name: string;
   email: string;
-  dataNascimento: string;
-  inicioTratamento: string;
+  birthDate: string;
+  treatmentStartDate: string;
 };
 
 function emptyFormState(): NovoPacienteFormState {
   return {
-    nome: "",
+    name: "",
     email: "",
-    dataNascimento: "",
-    inicioTratamento: "",
+    birthDate: "",
+    treatmentStartDate: "",
   };
 }
 
@@ -50,7 +50,7 @@ export function PacientesList() {
 
   const filtrados = pacientes.filter((p) => {
     const matchBusca =
-      p.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      p.name.toLowerCase().includes(busca.toLowerCase()) ||
       p.email.toLowerCase().includes(busca.toLowerCase());
     const matchStatus = filtroStatus === "todos" || p.status === filtroStatus;
     return matchBusca && matchStatus;
@@ -74,13 +74,13 @@ export function PacientesList() {
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const name = formState.nome.trim();
+    const name = formState.name.trim();
     const email = formState.email.trim();
-    const birthDate = formState.dataNascimento;
-    const treatmentStartDate = formState.inicioTratamento;
+    const birthDate = formState.birthDate;
+    const treatmentStartDate = formState.treatmentStartDate;
 
     if (!name || !email || !birthDate || !treatmentStartDate) {
-      toast.error("Preencha nome, e-mail, data de nascimento e início do tratamento.");
+      toast.error("Preencha nome, e-mail, data de nascimento e inicio do tratamento.");
       return;
     }
 
@@ -97,7 +97,7 @@ export function PacientesList() {
           closeForm();
         },
         onError: () => {
-          toast.error("Não foi possível cadastrar o paciente.");
+          toast.error("Nao foi possivel cadastrar o paciente.");
         },
       },
     );
@@ -124,13 +124,6 @@ export function PacientesList() {
         </div>
       )}
 
-      {isLoading && (
-        <div className="rounded-xl border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground">Carregando pacientes...</p>
-        </div>
-      )}
-
-      {/* Filtros */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -148,52 +141,52 @@ export function PacientesList() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="ativo">Ativo</SelectItem>
-            <SelectItem value="inativo">Inativo</SelectItem>
-            <SelectItem value="alta">Alta</SelectItem>
+            <SelectItem value="active">Ativo</SelectItem>
+            <SelectItem value="inactive">Inativo</SelectItem>
+            <SelectItem value="discharged">Alta</SelectItem>
+            <SelectItem value="archived">Arquivado</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Lista */}
       <div className="grid gap-3">
         {filtrados.map((p) => (
           <Link
             key={p.id}
             to="/dashboard/pacientes/$id"
             params={{ id: p.id }}
-            className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-all hover:shadow-md hover:border-primary/30"
+            className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
           >
             <img
-              src={p.foto}
-              alt={p.nome}
+              src={p.avatarUrl}
+              alt={p.name}
               className="h-12 w-12 rounded-full bg-muted object-cover shrink-0"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-foreground truncate">{p.nome}</p>
+                <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
                 <StatusBadge status={p.status} />
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {p.idade} anos · {p.email}
+                {p.age} anos · {p.email}
               </p>
             </div>
             <div className="hidden sm:flex items-center gap-6 text-sm">
               <div className="text-center">
-                <p className="text-xs text-muted-foreground">Humor médio</p>
+                <p className="text-xs text-muted-foreground">Humor medio</p>
                 <div className="flex items-center justify-center gap-1 mt-0.5">
-                  {getHumorIcon(p.humorMedio)}
-                  <span className="font-medium text-foreground">{p.humorMedio.toFixed(1)}</span>
+                  {getHumorIcon(p.averageMood)}
+                  <span className="font-medium text-foreground">{p.averageMood.toFixed(1)}</span>
                 </div>
               </div>
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Registros</p>
-                <p className="font-medium text-foreground mt-0.5">{p.diarioCount}</p>
+                <p className="font-medium text-foreground mt-0.5">{p.journalCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-muted-foreground">Última sessão</p>
+                <p className="text-xs text-muted-foreground">Ultima sessao</p>
                 <p className="font-medium text-foreground mt-0.5">
-                  {formatDataCurta(p.ultimaSessao)}
+                  {formatDataCurta(p.lastSession)}
                 </p>
               </div>
             </div>
@@ -218,7 +211,7 @@ export function PacientesList() {
           <DialogHeader>
             <DialogTitle>Novo paciente</DialogTitle>
             <DialogDescription>
-              Cadastre um novo paciente para iniciar o acompanhamento clínico.
+              Cadastre um novo paciente para iniciar o acompanhamento clinico.
             </DialogDescription>
           </DialogHeader>
 
@@ -227,9 +220,9 @@ export function PacientesList() {
               <Label htmlFor="paciente-nome">Nome</Label>
               <Input
                 id="paciente-nome"
-                value={formState.nome}
+                value={formState.name}
                 onChange={(event) =>
-                  setFormState((current) => ({ ...current, nome: event.target.value }))
+                  setFormState((current) => ({ ...current, name: event.target.value }))
                 }
                 placeholder="Ana Souza"
               />
@@ -254,23 +247,23 @@ export function PacientesList() {
                 <Input
                   id="paciente-data-nascimento"
                   type="date"
-                  value={formState.dataNascimento}
+                  value={formState.birthDate}
                   onChange={(event) =>
-                    setFormState((current) => ({ ...current, dataNascimento: event.target.value }))
+                    setFormState((current) => ({ ...current, birthDate: event.target.value }))
                   }
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="paciente-inicio">Início do tratamento</Label>
+                <Label htmlFor="paciente-inicio">Inicio do tratamento</Label>
                 <Input
                   id="paciente-inicio"
                   type="date"
-                  value={formState.inicioTratamento}
+                  value={formState.treatmentStartDate}
                   onChange={(event) =>
                     setFormState((current) => ({
                       ...current,
-                      inicioTratamento: event.target.value,
+                      treatmentStartDate: event.target.value,
                     }))
                   }
                 />
