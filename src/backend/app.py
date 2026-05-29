@@ -70,6 +70,7 @@ app = Flask(__name__)
 
 _dynamodb = boto3.resource("dynamodb")
 _s3 = boto3.client("s3")
+_cognito_idp = boto3.client("cognito-idp")
 _STAGE = _env("STAGE", "dev").strip().lower() or "dev"
 
 _TASK_TYPES = {"exercise", "audio", "journal", "habit"}
@@ -165,7 +166,12 @@ def _build_organization_controller() -> OrganizationController:
         _dynamodb,
         table_name=_env("ORGANIZATIONS_TABLE_NAME", f"psyflow-organizations-{_STAGE}"),
     )
-    service = OrganizationService(repository, now_iso=_now_iso)
+    service = OrganizationService(
+        repository,
+        now_iso=_now_iso,
+        cognito_client=_cognito_idp,
+        user_pool_id=_optional_env("USER_POOL_ID"),
+    )
     return OrganizationController(service, json_ready=_json_ready, json_error=_json_error)
 
 

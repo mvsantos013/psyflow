@@ -40,11 +40,11 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     }
   }
 
-  if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+  if (typeof window !== "undefined" && response.status === 401) {
     window.dispatchEvent(
       new CustomEvent("psyflow:auth:unauthorized", {
         detail: {
-          reason: response.status === 401 ? "unauthorized" : "forbidden",
+          reason: "unauthorized",
         },
       }),
     );

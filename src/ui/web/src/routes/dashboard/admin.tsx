@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, Pencil, Plus, Shield, Trash2 } from "lucide-react";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Building2, Pencil, Plus, Shield, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { AuthGuard } from "@/components/auth/auth-guard";
@@ -77,6 +77,15 @@ function emptyFormState(): OrganizationFormState {
 }
 
 function AdminControlPage() {
+  const currentPath = useRouterState({
+    select: (router) => router.location.pathname,
+  });
+  const isOrganizationDetailsRoute = currentPath.startsWith("/dashboard/admin/organizations/");
+
+  if (isOrganizationDetailsRoute) {
+    return <Outlet />;
+  }
+
   const { data: organizations = [], isLoading, isError } = useOrganizations();
   const createOrganization = useCreateOrganization();
   const updateOrganization = useUpdateOrganization();
@@ -269,178 +278,194 @@ function AdminControlPage() {
                     </Card>
                   </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Lista de organizações</CardTitle>
-                  <CardDescription>
-                    Os dados são carregados diretamente da API administrativa.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-                      Carregando organizações...
-                    </div>
-                  ) : isError ? (
-                    <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-destructive">
-                      Não foi possível carregar as organizações.
-                    </div>
-                  ) : organizations.length === 0 ? (
-                    <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-                      Nenhuma organização encontrada.
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Slug</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Atualizada em</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {organizations.map((organization) => (
-                          <TableRow key={organization.id}>
-                            <TableCell className="font-medium">
-                              <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                <div>
-                                  <div className="font-medium text-foreground">
-                                    {organization.name}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Lista de organizações</CardTitle>
+                      <CardDescription>
+                        Os dados são carregados diretamente da API administrativa.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {isLoading ? (
+                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+                          Carregando organizações...
+                        </div>
+                      ) : isError ? (
+                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-destructive">
+                          Não foi possível carregar as organizações.
+                        </div>
+                      ) : organizations.length === 0 ? (
+                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+                          Nenhuma organização encontrada.
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Nome</TableHead>
+                              <TableHead>Slug</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Atualizada em</TableHead>
+                              <TableHead className="text-right">Ações</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {organizations.map((organization) => (
+                              <TableRow key={organization.id}>
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                                    <div>
+                                      <div className="font-medium text-foreground">
+                                        {organization.name}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        ID: {organization.id}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ID: {organization.id}
+                                </TableCell>
+                                <TableCell>{organization.slug}</TableCell>
+                                <TableCell>
+                                  <Badge variant={statusVariant(organization.status)}>
+                                    {statusLabel(organization.status)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{formatDateTime(organization.updatedAt)}</TableCell>
+                                <TableCell className="text-right">
+                                  <div className="inline-flex items-center gap-2">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                      <Link
+                                        to="/dashboard/admin/organizations/$orgId"
+                                        params={{ orgId: organization.id }}
+                                        aria-label={`Ver detalhes de ${organization.name}`}
+                                        title="Detalhes"
+                                      >
+                                        <Users className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      aria-label={`Editar ${organization.name}`}
+                                      title="Editar"
+                                      onClick={() => openEditDialog(organization)}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                      aria-label={`Arquivar ${organization.name}`}
+                                      title="Arquivar"
+                                      onClick={() => setDeleteTarget(organization)}
+                                      disabled={deleteOrganization.isPending}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
                                   </div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>{organization.slug}</TableCell>
-                            <TableCell>
-                              <Badge variant={statusVariant(organization.status)}>
-                                {statusLabel(organization.status)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{formatDateTime(organization.updatedAt)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="inline-flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openEditDialog(organization)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                  Editar
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => setDeleteTarget(organization)}
-                                  disabled={deleteOrganization.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  Arquivar
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               </main>
             </div>
           </div>
 
-      <Dialog
-        open={formOpen}
-        onOpenChange={(open) => {
-          if (!open) closeForm();
-          else setFormOpen(true);
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {formMode === "create" ? "Nova organização" : "Editar organização"}
-            </DialogTitle>
-            <DialogDescription>
-              {formMode === "create"
-                ? "Crie uma nova organização com nome e slug únicos."
-                : "Atualize os dados básicos da organização selecionada."}
-            </DialogDescription>
-          </DialogHeader>
+          <Dialog
+            open={formOpen}
+            onOpenChange={(open) => {
+              if (!open) closeForm();
+              else setFormOpen(true);
+            }}
+          >
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {formMode === "create" ? "Nova organização" : "Editar organização"}
+                </DialogTitle>
+                <DialogDescription>
+                  {formMode === "create"
+                    ? "Crie uma nova organização com nome e slug únicos."
+                    : "Atualize os dados básicos da organização selecionada."}
+                </DialogDescription>
+              </DialogHeader>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="organization-name">Nome</Label>
-              <Input
-                id="organization-name"
-                value={formState.name}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, name: event.target.value }))
-                }
-                placeholder="Clínica Aurora"
-              />
-            </div>
+              <form className="space-y-4" onSubmit={handleSubmit}>
+                <div className="space-y-2">
+                  <Label htmlFor="organization-name">Nome</Label>
+                  <Input
+                    id="organization-name"
+                    value={formState.name}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, name: event.target.value }))
+                    }
+                    placeholder="Clínica Aurora"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="organization-slug">Slug</Label>
-              <Input
-                id="organization-slug"
-                value={formState.slug}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, slug: event.target.value }))
-                }
-                placeholder="clinica-aurora"
-              />
-              <p className="text-xs text-muted-foreground">
-                Use letras minúsculas, números e hífens.
-              </p>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="organization-slug">Slug</Label>
+                  <Input
+                    id="organization-slug"
+                    value={formState.slug}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, slug: event.target.value }))
+                    }
+                    placeholder="clinica-aurora"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use letras minúsculas, números e hífens.
+                  </p>
+                </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeForm}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving
-                  ? "Salvando..."
-                  : formMode === "create"
-                    ? "Criar organização"
-                    : "Salvar alterações"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={closeForm}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving
+                      ? "Salvando..."
+                      : formMode === "create"
+                        ? "Criar organização"
+                        : "Salvar alterações"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
 
-      <AlertDialog
-        open={Boolean(deleteTarget)}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Arquivar organização</AlertDialogTitle>
-            <AlertDialogDescription>
-              A organização {deleteTarget?.name ?? "selecionada"} será marcada como arquivada. Você
-              poderá restaurá-la depois pela API.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteOrganization.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={deleteOrganization.isPending}>
-              {deleteOrganization.isPending ? "Arquivando..." : "Arquivar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <AlertDialog
+            open={Boolean(deleteTarget)}
+            onOpenChange={(open) => {
+              if (!open) setDeleteTarget(null);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Arquivar organização</AlertDialogTitle>
+                <AlertDialogDescription>
+                  A organização {deleteTarget?.name ?? "selecionada"} será marcada como arquivada.
+                  Você poderá restaurá-la depois pela API.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleteOrganization.isPending}>
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={deleteOrganization.isPending}>
+                  {deleteOrganization.isPending ? "Arquivando..." : "Arquivar"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </SidebarProvider>
       )}
     </AuthGuard>

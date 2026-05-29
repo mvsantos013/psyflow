@@ -52,3 +52,23 @@ class OrganizationNotFoundError(DomainError):
 class OrganizationConflictError(DomainError):
     def __init__(self):
         super().__init__(status_code=409, error_code="ORGANIZATION_CONFLICT", message="organization already exists")
+
+
+class OrganizationUserNotFoundError(DomainError):
+    def __init__(self):
+        super().__init__(status_code=404, error_code="ORGANIZATION_USER_NOT_FOUND", message="organization user not found")
+
+
+class OrganizationUserConflictError(DomainError):
+    def __init__(self):
+        super().__init__(status_code=409, error_code="ORGANIZATION_USER_CONFLICT", message="organization user conflict")
+
+
+class OrganizationUserRoleInvalidError(DomainError):
+    def __init__(self):
+        super().__init__(status_code=400, error_code="ORGANIZATION_USER_ROLE_INVALID", message="invalid organization user role")
+
+
+class UserPoolConfigError(DomainError):
+    def __init__(self):
+        super().__init__(status_code=500, error_code="USER_POOL_CONFIG_ERROR", message="user pool not configured")

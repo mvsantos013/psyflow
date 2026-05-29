@@ -10,7 +10,7 @@ from core.exceptions import RoleForbiddenError
 from core.exceptions import RoleRequiredError
 
 _KNOWN_ROLES = {"admin", "therapist", "assistant", "super_admin"}
-_WRITE_ROLES = {"admin", "therapist"}
+_WRITE_ROLES = {"admin", "therapist", "super_admin"}
 
 
 def extract_claims() -> dict:

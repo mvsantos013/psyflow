@@ -60,6 +60,20 @@ set +a
 uv run flask --app app:app run --host 0.0.0.0 --port 8000 --debug
 ```
 
+## Tests
+
+Run backend tests with the dev dependency group:
+
+```bash
+uv run --group dev pytest
+```
+
+Run a specific module (organizations):
+
+```bash
+uv run --group dev pytest tests/services/test_organization_service.py tests/controllers/test_organization_blueprint.py
+```
+
 ### Lock and Export
 
 Generate/update lockfile:

@@ -18,7 +18,7 @@ type ApiPatient = {
   id: string;
   name?: string;
   email?: string;
-  age?: number;
+  birthDate?: string | null;
   treatmentStartDate?: string;
   status?: string;
   lastSession?: string;
@@ -191,12 +191,37 @@ function normalizeGeneralSummary(summary: unknown): ResumoGeral | null {
   };
 }
 
+function calculateAgeFromBirthDate(birthDate: string | null | undefined): number | null {
+  if (!birthDate) return null;
+
+  const [yearText, monthText, dayText] = birthDate.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (!year || !month || !day) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const monthDiff = today.getMonth() + 1 - month;
+  const dayDiff = today.getDate() - day;
+
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1;
+  }
+
+  return Math.max(age, 0);
+}
+
 export function normalizePatient(patient: ApiPatient): Paciente {
+  const calculatedAge = calculateAgeFromBirthDate(patient.birthDate);
+
   return {
     id: patient.id,
     nome: patient.name ?? "",
     email: patient.email ?? "",
-    idade: Number(patient.age ?? 0),
+    idade: calculatedAge ?? 0,
+    dataNascimento: patient.birthDate ?? undefined,
     inicioTratamento: patient.treatmentStartDate ?? "",
     status: normalizePatientStatus(patient.status),
     ultimaSessao: patient.lastSession ?? "",

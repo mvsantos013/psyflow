@@ -23,6 +23,7 @@ export type Paciente = {
   nome: string;
   email: string;
   idade: number;
+  dataNascimento?: string;
   inicioTratamento: string;
   status: PatientStatus;
   ultimaSessao: string;

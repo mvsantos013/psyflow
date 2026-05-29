@@ -3,6 +3,7 @@ from __future__ import annotations
 from flask import Blueprint
 from flask import jsonify
 
+from core.exceptions import RoleForbiddenError
 from core.validation import JsonField
 from core.validation import JsonSchema
 
@@ -27,6 +28,43 @@ class OrganizationController:
         organization = self._organization_service.create_organization(name=name, slug=slug)
         return jsonify(self._json_ready(organization)), 201
 
+    def list_organization_users(self, org_id: str):
+        users = self._organization_service.list_organization_users(org_id)
+        return jsonify(self._json_ready(users))
+
+    def assign_organization_user(self, *, org_id: str, username: str, role: str, assigned_by: str | None = None):
+        user = self._organization_service.assign_existing_user_to_organization(
+            org_id=org_id,
+            username=username,
+            role=role,
+            assigned_by=assigned_by,
+        )
+        return jsonify(self._json_ready(user)), 201
+
+    def update_organization_user_role(
+        self,
+        *,
+        org_id: str,
+        username: str,
+        role: str,
+        updated_by: str | None = None,
+    ):
+        user = self._organization_service.update_organization_user_role(
+            org_id=org_id,
+            username=username,
+            role=role,
+            updated_by=updated_by,
+        )
+        return jsonify(self._json_ready(user))
+
+    def remove_organization_user(self, *, org_id: str, username: str, removed_by: str | None = None):
+        user = self._organization_service.remove_user_from_organization(
+            org_id=org_id,
+            username=username,
+            removed_by=removed_by,
+        )
+        return jsonify(self._json_ready(user))
+
     def update_organization(self, org_id: str, *, name: str | None = None, slug: str | None = None):
         organization = self._organization_service.update_organization(org_id, name=name, slug=slug)
         return jsonify(self._json_ready(organization))
@@ -40,6 +78,17 @@ def create_organization_blueprint(*, organization_controller: OrganizationContro
     bp = Blueprint("organizations", __name__)
     d = deps
 
+    def require_org_manage_access(target_org_id: str):
+        role = d.extract_role()
+        if role == "super_admin":
+            return
+
+        org_id, auth_role = d.extract_auth_context()
+        if auth_role == "admin" and org_id == target_org_id:
+            return
+
+        raise RoleForbiddenError()
+
     @bp.get("/api/admin/organizations")
     def list_organizations():
         role = d.extract_role()
@@ -48,8 +97,7 @@ def create_organization_blueprint(*, organization_controller: OrganizationContro
 
     @bp.get("/api/admin/organizations/<org_id>")
     def get_organization(org_id: str):
-        role = d.extract_role()
-        d.require_super_admin(role)
+        require_org_manage_access(org_id)
         return organization_controller.get_organization(org_id)
 
     @bp.post("/api/admin/organizations")
@@ -92,5 +140,60 @@ def create_organization_blueprint(*, organization_controller: OrganizationContro
         d.require_super_admin(role)
         deleted_by = d.extract_user_sub()
         return organization_controller.delete_organization(org_id, deleted_by=deleted_by)
+
+    @bp.get("/api/admin/organizations/<org_id>/users")
+    def list_organization_users(org_id: str):
+        require_org_manage_access(org_id)
+        return organization_controller.list_organization_users(org_id)
+
+    @bp.post("/api/admin/organizations/<org_id>/users")
+    def assign_organization_user(org_id: str):
+        require_org_manage_access(org_id)
+        payload = d.validate_json_schema(
+            JsonSchema(
+                fields={
+                    "username": JsonField(required=True),
+                    "role": JsonField(required=True),
+                }
+            )
+        )
+        username = d.require_string(payload, "username", max_length=256)
+        role = d.require_string(payload, "role", max_length=32)
+        assigned_by = d.extract_user_sub()
+        return organization_controller.assign_organization_user(
+            org_id=org_id,
+            username=username,
+            role=role,
+            assigned_by=assigned_by,
+        )
+
+    @bp.patch("/api/admin/organizations/<org_id>/users/<username>/role")
+    def update_organization_user_role(org_id: str, username: str):
+        require_org_manage_access(org_id)
+        payload = d.validate_json_schema(
+            JsonSchema(
+                fields={
+                    "role": JsonField(required=True),
+                }
+            )
+        )
+        role = d.require_string(payload, "role", max_length=32)
+        updated_by = d.extract_user_sub()
+        return organization_controller.update_organization_user_role(
+            org_id=org_id,
+            username=username,
+            role=role,
+            updated_by=updated_by,
+        )
+
+    @bp.delete("/api/admin/organizations/<org_id>/users/<username>")
+    def remove_organization_user(org_id: str, username: str):
+        require_org_manage_access(org_id)
+        removed_by = d.extract_user_sub()
+        return organization_controller.remove_organization_user(
+            org_id=org_id,
+            username=username,
+            removed_by=removed_by,
+        )
 
     return bp

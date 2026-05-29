@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 
 class PatientService:
     def __init__(self, patient_repository):
@@ -19,7 +21,7 @@ class PatientService:
             "id": item.get("id", patient_id),
             "name": item.get("name", ""),
             "email": item.get("email", ""),
-            "age": int(item.get("age", 0)),
+            "birthDate": item.get("birthDate"),
             "treatmentStartDate": item.get("treatmentStartDate", ""),
             "status": item.get("status", "active"),
             "lastSession": item.get("lastSession", ""),
@@ -42,3 +44,32 @@ class PatientService:
 
     def patient_exists(self, org_id: str, patient_id: str) -> bool:
         return self._patient_repository.exists(org_id, patient_id)
+
+    def create_patient(
+        self,
+        org_id: str,
+        *,
+        name: str,
+        email: str,
+        birth_date: str,
+        treatment_start_date: str,
+    ) -> dict:
+        patient_id = str(uuid.uuid4())
+        item = {
+            "PK": f"ORG#{org_id}",
+            "SK": f"PATIENT#{patient_id}",
+            "id": patient_id,
+            "name": name,
+            "email": email,
+            "birthDate": birth_date,
+            "treatmentStartDate": treatment_start_date,
+            "status": "active",
+            "lastSession": "",
+            "nextSession": "",
+            "nextSessionHour": None,
+            "averageMood": 0,
+            "journalCount": 0,
+            "avatarUrl": None,
+        }
+        self._patient_repository.save(item)
+        return self._to_api_patient(item)

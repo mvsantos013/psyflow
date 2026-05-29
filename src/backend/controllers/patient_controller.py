@@ -3,6 +3,9 @@ from __future__ import annotations
 from flask import Blueprint
 from flask import jsonify
 
+from core.validation import JsonField
+from core.validation import JsonSchema
+
 
 class PatientController:
     def __init__(self, patient_service, *, json_ready, json_error):
@@ -23,6 +26,24 @@ class PatientController:
     def patient_exists(self, org_id: str, patient_id: str) -> bool:
         return self._patient_service.patient_exists(org_id, patient_id)
 
+    def create_patient(
+        self,
+        org_id: str,
+        *,
+        name: str,
+        email: str,
+        birth_date: str,
+        treatment_start_date: str,
+    ):
+        patient = self._patient_service.create_patient(
+            org_id,
+            name=name,
+            email=email,
+            birth_date=birth_date,
+            treatment_start_date=treatment_start_date,
+        )
+        return jsonify(self._json_ready(patient)), 201
+
 
 def create_patient_blueprint(*, patient_controller: PatientController, deps):
     bp = Blueprint("patients", __name__)
@@ -37,5 +58,32 @@ def create_patient_blueprint(*, patient_controller: PatientController, deps):
     def get_patient(patient_id: str):
         org_id = d.extract_org_id()
         return patient_controller.get_patient(org_id, patient_id)
+
+    @bp.post("/api/patients")
+    def create_patient():
+        org_id = d.extract_org_id()
+        role = d.extract_role()
+        d.require_write_role(role)
+        payload = d.validate_json_schema(
+            JsonSchema(
+                fields={
+                    "name": JsonField(required=True),
+                    "email": JsonField(required=True),
+                    "birthDate": JsonField(required=True),
+                    "treatmentStartDate": JsonField(required=True),
+                }
+            )
+        )
+        name = d.require_string(payload, "name", max_length=200)
+        email = d.require_string(payload, "email", max_length=254)
+        birth_date = d.require_date_yyyy_mm_dd(payload, "birthDate")
+        treatment_start_date = d.require_date_yyyy_mm_dd(payload, "treatmentStartDate")
+        return patient_controller.create_patient(
+            org_id,
+            name=name,
+            email=email,
+            birth_date=birth_date,
+            treatment_start_date=treatment_start_date,
+        )
 
     return bp

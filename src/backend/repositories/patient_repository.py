@@ -38,3 +38,6 @@ class PatientRepository:
             }
         )
         return response.get("Item") is not None
+
+    def save(self, item: dict) -> None:
+        self._table.put_item(Item=item)

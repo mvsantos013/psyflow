@@ -19,6 +19,7 @@ import { Route as DashboardExerciciosRouteImport } from './routes/dashboard/exer
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as DashboardPacientesIndexRouteImport } from './routes/dashboard/pacientes.index'
 import { Route as DashboardPacientesIdRouteImport } from './routes/dashboard/pacientes.$id'
+import { Route as DashboardAdminOrganizationsOrgIdRouteImport } from './routes/dashboard/admin.organizations.$orgId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -70,41 +71,50 @@ const DashboardPacientesIdRoute = DashboardPacientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => DashboardPacientesRoute,
 } as any)
+const DashboardAdminOrganizationsOrgIdRoute =
+  DashboardAdminOrganizationsOrgIdRouteImport.update({
+    id: '/organizations/$orgId',
+    path: '/organizations/$orgId',
+    getParentRoute: () => DashboardAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
-  '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/exercicios': typeof DashboardExerciciosRoute
   '/dashboard/pacientes': typeof DashboardPacientesRouteWithChildren
   '/dashboard/transcricao': typeof DashboardTranscricaoRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/pacientes/$id': typeof DashboardPacientesIdRoute
   '/dashboard/pacientes/': typeof DashboardPacientesIndexRoute
+  '/dashboard/admin/organizations/$orgId': typeof DashboardAdminOrganizationsOrgIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/exercicios': typeof DashboardExerciciosRoute
   '/dashboard/transcricao': typeof DashboardTranscricaoRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/pacientes/$id': typeof DashboardPacientesIdRoute
   '/dashboard/pacientes': typeof DashboardPacientesIndexRoute
+  '/dashboard/admin/organizations/$orgId': typeof DashboardAdminOrganizationsOrgIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
-  '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/exercicios': typeof DashboardExerciciosRoute
   '/dashboard/pacientes': typeof DashboardPacientesRouteWithChildren
   '/dashboard/transcricao': typeof DashboardTranscricaoRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/pacientes/$id': typeof DashboardPacientesIdRoute
   '/dashboard/pacientes/': typeof DashboardPacientesIndexRoute
+  '/dashboard/admin/organizations/$orgId': typeof DashboardAdminOrganizationsOrgIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/pacientes/$id'
     | '/dashboard/pacientes/'
+    | '/dashboard/admin/organizations/$orgId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/pacientes/$id'
     | '/dashboard/pacientes'
+    | '/dashboard/admin/organizations/$orgId'
   id:
     | '__root__'
     | '/'
@@ -141,6 +153,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/pacientes/$id'
     | '/dashboard/pacientes/'
+    | '/dashboard/admin/organizations/$orgId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -221,8 +234,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardPacientesIdRouteImport
       parentRoute: typeof DashboardPacientesRoute
     }
+    '/dashboard/admin/organizations/$orgId': {
+      id: '/dashboard/admin/organizations/$orgId'
+      path: '/organizations/$orgId'
+      fullPath: '/dashboard/admin/organizations/$orgId'
+      preLoaderRoute: typeof DashboardAdminOrganizationsOrgIdRouteImport
+      parentRoute: typeof DashboardAdminRoute
+    }
   }
 }
+
+interface DashboardAdminRouteChildren {
+  DashboardAdminOrganizationsOrgIdRoute: typeof DashboardAdminOrganizationsOrgIdRoute
+}
+
+const DashboardAdminRouteChildren: DashboardAdminRouteChildren = {
+  DashboardAdminOrganizationsOrgIdRoute: DashboardAdminOrganizationsOrgIdRoute,
+}
+
+const DashboardAdminRouteWithChildren = DashboardAdminRoute._addFileChildren(
+  DashboardAdminRouteChildren,
+)
 
 interface DashboardPacientesRouteChildren {
   DashboardPacientesIdRoute: typeof DashboardPacientesIdRoute
@@ -238,7 +270,7 @@ const DashboardPacientesRouteWithChildren =
   DashboardPacientesRoute._addFileChildren(DashboardPacientesRouteChildren)
 
 interface DashboardRouteChildren {
-  DashboardAdminRoute: typeof DashboardAdminRoute
+  DashboardAdminRoute: typeof DashboardAdminRouteWithChildren
   DashboardExerciciosRoute: typeof DashboardExerciciosRoute
   DashboardPacientesRoute: typeof DashboardPacientesRouteWithChildren
   DashboardTranscricaoRoute: typeof DashboardTranscricaoRoute
@@ -246,7 +278,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardAdminRoute: DashboardAdminRoute,
+  DashboardAdminRoute: DashboardAdminRouteWithChildren,
   DashboardExerciciosRoute: DashboardExerciciosRoute,
   DashboardPacientesRoute: DashboardPacientesRouteWithChildren,
   DashboardTranscricaoRoute: DashboardTranscricaoRoute,

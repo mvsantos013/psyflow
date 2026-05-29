@@ -34,6 +34,8 @@ pyjwt==2.10.1
     # via psyflow-backend
 python-dateutil==2.9.0.post0
     # via botocore
+python-dotenv==1.1.1
+    # via psyflow-backend
 s3transfer==0.13.1
     # via boto3
 six==1.17.0

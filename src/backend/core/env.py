@@ -1,6 +1,20 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+def _load_env_files() -> None:
+    backend_root = Path(__file__).resolve().parents[1]
+    for filename in (".env.local", ".env"):
+        env_path = backend_root / filename
+        if env_path.exists():
+            load_dotenv(env_path, override=False)
+
+
+_load_env_files()
 
 
 def env(name: str, default: str) -> str:

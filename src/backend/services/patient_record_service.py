@@ -21,7 +21,7 @@ class PatientRecordService:
             "id": item.get("id", patient_id),
             "name": item.get("name", ""),
             "email": item.get("email", ""),
-            "age": int(item.get("age", 0)),
+            "birthDate": item.get("birthDate"),
             "treatmentStartDate": item.get("treatmentStartDate", ""),
             "status": item.get("status", "active"),
             "lastSession": item.get("lastSession", ""),
