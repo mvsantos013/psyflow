@@ -42,6 +42,7 @@ class SessionService:
             "transcription": item.get("transcription"),
             "audioS3Key": item.get("audioS3Key"),
             "transcriptionS3Key": item.get("transcriptionS3Key"),
+            "paid": bool(item.get("paid", False)),
         }
 
     @staticmethod
@@ -71,6 +72,7 @@ class SessionService:
         summary: str,
         insights: list[str],
         tasks: list[str],
+        paid: bool,
     ) -> dict:
         if session_type not in self._session_types:
             raise ValueError("type must be 'inPerson' or 'remote'")
@@ -90,6 +92,7 @@ class SessionService:
             "summary": summary,
             "insights": insights,
             "suggestedTasks": tasks,
+            "paid": bool(paid),
             "createdAt": self._now_iso(),
         }
         self._session_repository.put(item)
@@ -175,6 +178,7 @@ class SessionService:
         audio_s3_key: str | None,
         transcription_s3_key: str | None,
         transcription_status: str | None,
+        paid: bool | None,
     ) -> dict:
         fields: dict[str, object] = {
             "updatedAt": self._now_iso(),
@@ -185,6 +189,11 @@ class SessionService:
             fields["transcriptionS3Key"] = transcription_s3_key
         if transcription_status is not None:
             fields["transcriptionStatus"] = transcription_status
+        if paid is not None:
+            fields["paid"] = bool(paid)
 
         updated = self._session_repository.update_fields(org_id, patient_id, session_id, fields)
         return self._to_api_session(updated)
+
+    def delete_session(self, org_id: str, patient_id: str, session_id: str) -> bool:
+        return self._session_repository.delete_by_id(org_id, patient_id, session_id)

@@ -7,5 +7,5 @@ export const Route = createFileRoute("/dashboard/pacientes/$id")({
 
 function PatientRecordPage() {
   const { id } = Route.useParams();
-  return <PatientRecordView pacienteId={id} />;
+  return <PatientRecordView patientId={id} />;
 }

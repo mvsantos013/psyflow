@@ -100,12 +100,58 @@ async function postNovaTarefa(patientId: string, input: NovaTarefaInput): Promis
   return normalizeTask(data);
 }
 
+async function patchSessionPaid(
+  patientId: string,
+  sessionId: string,
+  paid: boolean,
+): Promise<Session> {
+  const res = await apiFetch(`/api/sessions/${sessionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ patientId, paid }),
+  });
+  if (!res.ok) throw new Error("Erro ao atualizar sessão");
+  const data = await res.json();
+  return normalizeSession(data);
+}
+
+async function deleteSession(patientId: string, sessionId: string): Promise<void> {
+  const res = await apiFetch(
+    `/api/sessions/${sessionId}?patientId=${encodeURIComponent(patientId)}`,
+    {
+      method: "DELETE",
+    },
+  );
+  if (!res.ok) throw new Error("Erro ao excluir sessão");
+}
+
 export function useAddTarefa(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: NovaTarefaInput) => postNovaTarefa(patientId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tarefas", patientId] });
+    },
+  });
+}
+
+export function useUpdateSessionPaid(patientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId, paid }: { sessionId: string; paid: boolean }) =>
+      patchSessionPaid(patientId, sessionId, paid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prontuario", patientId] });
+    },
+  });
+}
+
+export function useDeleteSession(patientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId }: { sessionId: string }) => deleteSession(patientId, sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prontuario", patientId] });
     },
   });
 }

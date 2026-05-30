@@ -35,6 +35,7 @@ type ApiSession = {
   date: string;
   type?: string;
   duration?: number;
+  paid?: boolean;
   summary?: string;
   insights?: string[];
   moodStart?: number;
@@ -228,6 +229,7 @@ export function normalizeSession(session: ApiSession): Session {
     date: session.date,
     type: normalizeSessionType(session.type),
     duration: Number(session.duration ?? 0),
+    paid: Boolean(session.paid),
     summary: session.summary ?? "",
     insights: Array.isArray(session.insights) ? session.insights : [],
     moodStart: Number(session.moodStart ?? 0),

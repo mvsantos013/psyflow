@@ -5,9 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+function parseIsoDate(date: string): Date | null {
+  if (!date || typeof date !== "string") return null;
+  const [y, m, day] = date.split("-").map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(day)) {
+    return null;
+  }
+  const parsed = new Date(y, m - 1, day);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
 export function formatData(d: string): string {
-  const [y, m, day] = d.split("-").map(Number);
-  return new Date(y, m - 1, day).toLocaleDateString("pt-BR", {
+  const parsed = parseIsoDate(d);
+  if (!parsed) return "-";
+  return parsed.toLocaleDateString("pt-BR", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -15,8 +27,9 @@ export function formatData(d: string): string {
 }
 
 export function formatDataCurta(d: string): string {
-  const [y, m, day] = d.split("-").map(Number);
-  return new Date(y, m - 1, day).toLocaleDateString("pt-BR", {
+  const parsed = parseIsoDate(d);
+  if (!parsed) return "-";
+  return parsed.toLocaleDateString("pt-BR", {
     day: "numeric",
     month: "short",
   });

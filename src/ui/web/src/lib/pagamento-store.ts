@@ -22,6 +22,19 @@ export function togglePaid(id: string) {
   emit();
 }
 
+export function setPaid(id: string, paid: boolean) {
+  const alreadyPaid = paidSet.has(id);
+  if (paid && !alreadyPaid) {
+    paidSet.add(id);
+    emit();
+    return;
+  }
+  if (!paid && alreadyPaid) {
+    paidSet.delete(id);
+    emit();
+  }
+}
+
 function subscribe(cb: () => void) {
   listeners.add(cb);
   return () => listeners.delete(cb);
@@ -36,15 +49,11 @@ function getSnapshot() {
 export function usePagamentos() {
   // Força rerender quando o set muda
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  return { isPaid, togglePaid };
+  return { isPaid, togglePaid, setPaid };
 }
 
 // ID estável para sessões da agenda (calendário)
-export function agendaSessaoId(opts: {
-  data: Date;
-  hora: number;
-  pacienteId: string;
-}) {
+export function agendaSessaoId(opts: { data: Date; hora: number; pacienteId: string }) {
   const y = opts.data.getFullYear();
   const m = (opts.data.getMonth() + 1).toString().padStart(2, "0");
   const d = opts.data.getDate().toString().padStart(2, "0");

@@ -3,6 +3,7 @@ from __future__ import annotations
 from core.validation import JsonField
 from core.validation import JsonSchema
 from flask import Blueprint, jsonify
+from flask import request
 
 _CREATE_SESSION_SCHEMA = JsonSchema(
     fields={
@@ -14,6 +15,7 @@ _CREATE_SESSION_SCHEMA = JsonSchema(
         "summary": JsonField(),
         "insights": JsonField(),
         "tasks": JsonField(),
+        "paid": JsonField(),
     }
 )
 
@@ -36,6 +38,7 @@ _PATCH_SESSION_SCHEMA = JsonSchema(
         "audioS3Key": JsonField(),
         "transcriptionS3Key": JsonField(),
         "transcriptionStatus": JsonField(),
+        "paid": JsonField(),
     }
 )
 
@@ -71,6 +74,7 @@ def create_session_blueprint(
         summary = d.optional_string(payload, "summary", max_length=10000) or ""
         insights = d.optional_string_list(payload, "insights")
         tasks = d.optional_string_list(payload, "tasks")
+        paid = d.optional_bool(payload, "paid", default=False)
 
         session = session_service.create_session(
             org_id,
@@ -83,6 +87,7 @@ def create_session_blueprint(
             summary=summary,
             insights=insights,
             tasks=tasks,
+            paid=paid,
         )
         return jsonify(d.json_ready(session)), 201
 
@@ -155,11 +160,28 @@ def create_session_blueprint(
             audio_s3_key=d.optional_string(payload, "audioS3Key", max_length=2048),
             transcription_s3_key=d.optional_string(payload, "transcriptionS3Key", max_length=2048),
             transcription_status=transcription_status,
+            paid=d.optional_bool(payload, "paid"),
         )
 
         if not updated:
             return d.json_error(404, "SESSION_NOT_FOUND", "session not found")
 
         return jsonify(d.json_ready(updated))
+
+    @bp.delete("/api/sessions/<session_id>")
+    def delete_session(session_id: str):
+        org_id, role = d.extract_auth_context()
+        d.require_write_role(role)
+        patient_id = request.args.get("patientId", "")
+        patient_id = d.require_string({"patientId": patient_id}, "patientId", max_length=128)
+
+        if not session_service.session_exists(org_id, patient_id, session_id):
+            return d.json_error(404, "SESSION_NOT_FOUND", "session not found")
+
+        deleted = session_service.delete_session(org_id, patient_id, session_id)
+        if not deleted:
+            return d.json_error(404, "SESSION_NOT_FOUND", "session not found")
+
+        return jsonify({"ok": True, "sessionId": session_id})
 
     return bp

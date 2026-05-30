@@ -40,6 +40,7 @@ export type Session = {
   date: string;
   type: SessionType;
   duration: number;
+  paid: boolean;
   summary: string;
   insights: string[];
   moodStart: number;

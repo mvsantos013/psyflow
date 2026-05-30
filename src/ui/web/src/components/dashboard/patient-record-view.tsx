@@ -20,12 +20,18 @@ import {
   Plus,
   Mic,
   Video as VideoIcon,
+  Loader2,
+  Trash2,
 } from "lucide-react";
-import { useProntuario, useTarefas } from "@/hooks/use-prontuario";
+import {
+  useDeleteSession,
+  useProntuario,
+  useTarefas,
+  useUpdateSessionPaid,
+} from "@/hooks/use-prontuario";
 import { NewSessionSheet } from "@/components/dashboard/new-session-sheet";
 import { NewTaskSheet } from "@/components/dashboard/new-task-sheet";
 import { SessionTranscriptionCard } from "@/components/dashboard/session-transcription-card";
-import { usePagamentos } from "@/lib/pagamento-store";
 import { formatData, formatDataCurta } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -50,58 +56,60 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { PatientRecord as UiPatientRecord, Session as UiSession } from "@/lib/ui-types";
+import type {
+  AIConclusions,
+  PatientRecord as UiPatientRecord,
+  Session as UiSession,
+} from "@/lib/ui-types";
 
-type Abordagem = "tcc" | "psicanalise" | "sistemica" | "humanista";
+type Approach = "cbt" | "psychoanalysis" | "systemic" | "humanistic";
 
-const ABORDAGENS: { value: Abordagem; label: string }[] = [
-  { value: "tcc", label: "Terapia Cognitivo-Comportamental" },
-  { value: "psicanalise", label: "Psicanálise" },
-  { value: "sistemica", label: "Sistêmica" },
-  { value: "humanista", label: "Humanista" },
+const APPROACH_OPTIONS: { value: Approach; label: string }[] = [
+  { value: "cbt", label: "Terapia Cognitivo-Comportamental" },
+  { value: "psychoanalysis", label: "Psicanálise" },
+  { value: "systemic", label: "Sistêmica" },
+  { value: "humanistic", label: "Humanista" },
 ];
 
-export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
-  const { data: prontuario, isLoading } = useProntuario(pacienteId);
-  const { data: tarefas = [] } = useTarefas(pacienteId);
-  const generalSummary = prontuario?.generalSummary ?? null;
-  const { isPaid, togglePaid } = usePagamentos();
-  const [abordagem, setAbordagem] = useState<Abordagem>("tcc");
-  const [abaAtiva, setAbaAtiva] = useState<"professional" | "assistente">("professional");
-  const [sessaoSelecionadaId, setSessaoSelecionadaId] = useState<string | null>(null);
-  const [sheetAberto, setSheetAberto] = useState(false);
-  const [sheetTarefaAberto, setSheetTarefaAberto] = useState(false);
+const APPROACH_TO_AI_KEY: Record<Approach, keyof AIConclusions> = {
+  cbt: "tcc",
+  psychoanalysis: "psicanalise",
+  systemic: "sistemica",
+  humanistic: "humanista",
+};
 
-  const sessoesOrdenadas = useMemo(
+const EMPTY_GENERAL_SUMMARY: NonNullable<UiPatientRecord["generalSummary"]> = {
+  sintese: "",
+  recurringThemes: [],
+  generalProgress: "",
+  attentionPoints: [],
+};
+
+export function PatientRecordView({ patientId }: { patientId: string }) {
+  const { data: patientRecord, isLoading } = useProntuario(patientId);
+  const { data: tasks = [] } = useTarefas(patientId);
+  const updateSessionPaidMutation = useUpdateSessionPaid(patientId);
+  const deleteSessionMutation = useDeleteSession(patientId);
+  const generalSummary = patientRecord?.generalSummary ?? null;
+  const [approach, setApproach] = useState<Approach>("cbt");
+  const [activeTab, setActiveTab] = useState<"professional" | "assistant">("professional");
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [isSessionSheetOpen, setIsSessionSheetOpen] = useState(false);
+  const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
+  const [payingSessionId, setPayingSessionId] = useState<string | null>(null);
+
+  const sortedSessions = useMemo(
     () =>
-      [...(prontuario?.sessions || [])].sort(
+      [...(patientRecord?.sessions || [])].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       ),
-    [prontuario],
+    [patientRecord],
   );
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Carregando prontuário...</p>
-      </div>
-    );
-  }
-
-  if (!prontuario) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Paciente não encontrado.</p>
-      </div>
-    );
-  }
-
-  const { patient, sessions, moodRecords, diagnoses } = prontuario;
-  const sessaoAtual =
-    sessoesOrdenadas.find((s) => s.id === sessaoSelecionadaId) || sessoesOrdenadas[0];
+  const moodRecords = patientRecord?.moodRecords ?? [];
 
   // Merge two humor series on a unified sorted date axis
-  const humorData = useMemo(() => {
+  const moodChartData = useMemo(() => {
     const allDates = [...new Set(moodRecords.map((r) => r.date))].sort();
     return allDates.map((d) => {
       const p = moodRecords.find((r) => r.date === d && r.source === "patient");
@@ -113,6 +121,44 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
       };
     });
   }, [moodRecords]);
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Carregando prontuário...</p>
+      </div>
+    );
+  }
+
+  if (!patientRecord) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Paciente não encontrado.</p>
+      </div>
+    );
+  }
+
+  const { patient, sessions, diagnoses } = patientRecord;
+  const selectedSession =
+    sortedSessions.find((s) => s.id === selectedSessionId) || sortedSessions[0];
+  const isSelectedSessionPaid = selectedSession ? selectedSession.paid : false;
+  const isUpdatingSelectedPaid = selectedSession ? payingSessionId === selectedSession.id : false;
+
+  const handlePaidChange = async (sessionId: string, nextPaid: boolean) => {
+    setPayingSessionId(sessionId);
+    try {
+      await updateSessionPaidMutation.mutateAsync({ sessionId, paid: nextPaid });
+    } finally {
+      setPayingSessionId(null);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    const confirmed = window.confirm("Tem certeza que deseja excluir esta sessão?");
+    if (!confirmed) return;
+    await deleteSessionMutation.mutateAsync({ sessionId });
+    setSelectedSessionId(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -129,7 +175,7 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
       {/* Header patient */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <img
-          src={patient.avatarUrl}
+          src={patient.avatarUrl || "/images/user-empty.jpg"}
           alt={patient.name}
           className="h-16 w-16 rounded-full bg-muted object-cover"
         />
@@ -161,18 +207,18 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
           <TabsTrigger value="resumo">Visão Geral</TabsTrigger>
           <TabsTrigger value="sessions">Sessões</TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
-          <TabsTrigger value="chat">Chat</TabsTrigger>
         </TabsList>
 
         {/* ========= VISÃO GERAL ========= */}
         <TabsContent value="resumo" className="space-y-6">
-          {generalSummary && (
-            <div className="rounded-xl border bg-card p-6 shadow-sm">
-              <ClinicalSynthesis pacienteId={pacienteId} generalSummary={generalSummary} />
-            </div>
-          )}
+          <div className="rounded-xl border bg-card p-6 shadow-sm">
+            <ClinicalSynthesis
+              patientId={patientId}
+              generalSummary={generalSummary ?? EMPTY_GENERAL_SUMMARY}
+            />
+          </div>
 
-          {humorData.length > 0 && (
+          {moodChartData.length > 0 && (
             <div className="rounded-xl border bg-card p-6 shadow-sm">
               <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                 <Activity className="h-4 w-4 text-primary" />
@@ -180,7 +226,7 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
               </h2>
               <div className="mt-4 h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={humorData}>
+                  <LineChart data={moodChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                     <XAxis
                       dataKey="data"
@@ -245,27 +291,40 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
                 Histórico de Sessões ({sessions.length})
               </h2>
             </div>
-            <Button size="sm" onClick={() => setSheetAberto(true)}>
-              <Plus className="h-4 w-4" />
-              Nova Sessão
-            </Button>
+            {sortedSessions.length > 0 && (
+              <Button size="sm" onClick={() => setIsSessionSheetOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Nova Sessão
+              </Button>
+            )}
           </div>
 
-          {sessoesOrdenadas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma sessão registrada.</p>
+          {sortedSessions.length === 0 ? (
+            <div className="rounded-xl border bg-card p-8 text-center shadow-sm">
+              <p className="text-sm text-muted-foreground">
+                Nenhuma sessão registrada ainda. Registre a primeira sessão para começar.
+              </p>
+              <div className="mt-4">
+                <Button size="sm" onClick={() => setIsSessionSheetOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Nova Sessão
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
               {/* Lista de sessões */}
               <div className="space-y-2 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1">
-                {sessoesOrdenadas.map((s) => {
-                  const ativo = sessaoAtual?.id === s.id;
-                  const pago = isPaid(s.id);
+                {sortedSessions.map((s) => {
+                  const isActive = selectedSession?.id === s.id;
+                  const isSessionPaid = s.paid;
+                  const isUpdatingPaid = payingSessionId === s.id;
                   return (
                     <button
                       key={s.id}
-                      onClick={() => setSessaoSelecionadaId(s.id)}
+                      onClick={() => setSelectedSessionId(s.id)}
                       className={`w-full text-left rounded-lg border p-3 transition-colors ${
-                        ativo
+                        isActive
                           ? "border-primary/50 bg-primary/5"
                           : "hover:border-primary/30 hover:bg-muted/40"
                       }`}
@@ -274,7 +333,11 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
                         <span className="text-sm font-semibold text-foreground">
                           {formatDataCurta(s.date)}
                         </span>
-                        {pago ? (
+                        {isUpdatingPaid ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Salvando
+                          </span>
+                        ) : isSessionPaid ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
                             <Check className="h-3 w-3" /> Pago
                           </span>
@@ -311,63 +374,87 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
               </div>
 
               {/* Detalhe da sessão selecionada */}
-              {sessaoAtual && (
+              {selectedSession && (
                 <div className="space-y-4 min-w-0">
                   {/* Cabeçalho + pagamento */}
                   <div className="rounded-xl border bg-card p-5 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <h3 className="text-base font-semibold text-foreground">
-                          {formatData(sessaoAtual.date)}
+                          {formatData(selectedSession.date)}
                         </h3>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>{sessaoAtual.type === "remote" ? "Remota" : "Presencial"}</span>
+                          <span>{selectedSession.type === "remote" ? "Remota" : "Presencial"}</span>
                           <span>·</span>
-                          <span>{sessaoAtual.duration} min</span>
+                          <span>{selectedSession.duration} min</span>
                           <span>·</span>
                           <span>
-                            Humor {sessaoAtual.moodStart} → {sessaoAtual.moodEnd}
-                            {sessaoAtual.moodEnd > sessaoAtual.moodStart && (
+                            Humor {selectedSession.moodStart} → {selectedSession.moodEnd}
+                            {selectedSession.moodEnd > selectedSession.moodStart && (
                               <span className="text-chart-2 font-medium ml-1">
-                                (+{sessaoAtual.moodEnd - sessaoAtual.moodStart})
+                                (+{selectedSession.moodEnd - selectedSession.moodStart})
                               </span>
                             )}
                           </span>
                         </div>
                       </div>
-                      <label
-                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors shrink-0 ${
-                          isPaid(sessaoAtual.id)
-                            ? "border-emerald-500/50 bg-emerald-500/10"
-                            : "hover:bg-muted/40"
-                        }`}
-                      >
-                        <Checkbox
-                          checked={isPaid(sessaoAtual.id)}
-                          onCheckedChange={() => togglePaid(sessaoAtual.id)}
-                        />
-                        <span
-                          className={`text-sm font-medium ${
-                            isPaid(sessaoAtual.id)
-                              ? "text-emerald-700 dark:text-emerald-400"
-                              : "text-foreground"
+                      <div className="flex items-center gap-2 shrink-0">
+                        <label
+                          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+                            isSelectedSessionPaid
+                              ? "border-emerald-500/50 bg-emerald-500/10"
+                              : "hover:bg-muted/40"
                           }`}
                         >
-                          {isPaid(sessaoAtual.id) ? "Sessão paga" : "Marcar como paga"}
-                        </span>
-                      </label>
+                          <Checkbox
+                            checked={isSelectedSessionPaid}
+                            disabled={isUpdatingSelectedPaid}
+                            onCheckedChange={(checked) =>
+                              handlePaidChange(selectedSession.id, checked === true)
+                            }
+                          />
+                          <span
+                            className={`text-sm font-medium ${
+                              isSelectedSessionPaid
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : "text-foreground"
+                            }`}
+                          >
+                            {isUpdatingSelectedPaid
+                              ? "Salvando..."
+                              : isSelectedSessionPaid
+                                ? "Sessão paga"
+                                : "Marcar como paga"}
+                          </span>
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          aria-label="Excluir sessão"
+                          title="Excluir sessão"
+                          disabled={deleteSessionMutation.isPending}
+                          onClick={() => handleDeleteSession(selectedSession.id)}
+                        >
+                          {deleteSessionMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
                   {/* Switch compartilhado Profissional / Assistente de IA */}
                   <div className="flex items-center justify-between">
                     <Tabs
-                      value={abaAtiva}
-                      onValueChange={(v) => setAbaAtiva(v as "professional" | "assistente")}
+                      value={activeTab}
+                      onValueChange={(v) => setActiveTab(v as "professional" | "assistant")}
                     >
                       <TabsList>
                         <TabsTrigger value="professional">Profissional</TabsTrigger>
-                        <TabsTrigger value="assistente">Assistente de IA</TabsTrigger>
+                        <TabsTrigger value="assistant">Assistente de IA</TabsTrigger>
                       </TabsList>
                     </Tabs>
                   </div>
@@ -379,28 +466,29 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
                       Resumo da Sessão
                     </h3>
                     <ProfessionalAssistantText
-                      storageKey={`resumo-prof-${sessaoAtual.id}`}
-                      iaConteudo={sessaoAtual.summary}
+                      storageKey={`session-summary-prof-${selectedSession.id}`}
+                      professionalContent={selectedSession.summary}
+                      aiContent={selectedSession.hasTranscription ? selectedSession.summary : ""}
                       placeholder="Escreva seu próprio resumo da sessão..."
                       emptyLabel="Nenhum resumo registrado por você ainda."
-                      aba={abaAtiva}
+                      activeTab={activeTab}
                     />
                   </div>
 
                   {/* Conclusões IA */}
-                  {sessaoAtual.aiConclusions ? (
+                  {selectedSession.aiConclusions ? (
                     <div className="rounded-xl border bg-card p-5 shadow-sm">
                       <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                         <Brain className="h-4 w-4 text-primary" />
                         Conclusões da Sessão
                       </h3>
                       <ProfessionalAssistantConclusions
-                        storageKey={`conclusao-prof-${sessaoAtual.id}`}
-                        aiConclusions={sessaoAtual.aiConclusions}
-                        insights={sessaoAtual.insights}
-                        abordagem={abordagem}
-                        setAbordagem={setAbordagem}
-                        aba={abaAtiva}
+                        storageKey={`session-conclusion-prof-${selectedSession.id}`}
+                        aiConclusions={selectedSession.aiConclusions}
+                        insights={selectedSession.insights}
+                        approach={approach}
+                        setApproach={setApproach}
+                        activeTab={activeTab}
                       />
                     </div>
                   ) : (
@@ -417,10 +505,10 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
                     </h3>
                     <div className="mt-3">
                       <SessionTranscriptionCard
-                        sessaoId={sessaoAtual.id}
-                        pacienteId={pacienteId}
-                        temTranscricao={sessaoAtual.hasTranscription}
-                        transcricaoInicial={sessaoAtual.transcription}
+                        sessaoId={selectedSession.id}
+                        pacienteId={patientId}
+                        temTranscricao={selectedSession.hasTranscription}
+                        transcricaoInicial={selectedSession.transcription}
                       />
                     </div>
                   </div>
@@ -428,11 +516,6 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
               )}
             </div>
           )}
-        </TabsContent>
-
-        {/* ========= CHAT (WhatsApp) ========= */}
-        <TabsContent value="chat">
-          <WhatsAppChat patient={patient} />
         </TabsContent>
 
         {/* placeholder antigo removido */}
@@ -448,19 +531,19 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
             <div className="flex items-center gap-2">
               <ListChecks className="h-4 w-4 text-primary" />
               <h2 className="text-base font-semibold text-foreground">
-                Tarefas Prescritas ({tarefas.length})
+                Tarefas Prescritas ({tasks.length})
               </h2>
             </div>
-            <Button size="sm" className="gap-2" onClick={() => setSheetTarefaAberto(true)}>
+            <Button size="sm" className="gap-2" onClick={() => setIsTaskSheetOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
               Prescrever tarefa
             </Button>
           </div>
-          {tarefas.length === 0 ? (
+          {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma tarefa prescrita.</p>
           ) : (
             <div className="space-y-3">
-              {tarefas.map((t) => (
+              {tasks.map((t) => (
                 <div key={t.id} className="flex items-start gap-3 rounded-lg border bg-card p-4">
                   <div
                     className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
@@ -491,15 +574,15 @@ export function PatientRecordView({ pacienteId }: { pacienteId: string }) {
       </Tabs>
 
       <NewSessionSheet
-        pacienteId={pacienteId}
-        open={sheetAberto}
-        onOpenChange={setSheetAberto}
-        onSessaoCriada={(id) => setSessaoSelecionadaId(id)}
+        pacienteId={patientId}
+        open={isSessionSheetOpen}
+        onOpenChange={setIsSessionSheetOpen}
+        onSessaoCriada={(id) => setSelectedSessionId(id)}
       />
       <NewTaskSheet
-        pacienteId={pacienteId}
-        open={sheetTarefaAberto}
-        onOpenChange={setSheetTarefaAberto}
+        pacienteId={patientId}
+        open={isTaskSheetOpen}
+        onOpenChange={setIsTaskSheetOpen}
       />
     </div>
   );
@@ -570,7 +653,7 @@ function WhatsAppChat({ patient }: { patient: { name: string; avatarUrl?: string
       {/* Header */}
       <div className="flex items-center gap-3 border-b bg-muted/40 px-4 py-3">
         <img
-          src={patient.avatarUrl}
+          src={patient.avatarUrl || "/images/user-empty.jpg"}
           alt={patient.name}
           className="h-10 w-10 rounded-full bg-muted object-cover"
         />
@@ -645,7 +728,7 @@ function WhatsAppChat({ patient }: { patient: { name: string; avatarUrl?: string
 
 // ============= Síntese Clínica (Profissional / Assistente) =============
 
-type SinteseEditavel = {
+type EditableSynthesis = {
   sintese: string;
   temas: string;
   evolucao: string;
@@ -655,15 +738,15 @@ type SinteseEditavel = {
 type ResumoGeral = NonNullable<UiPatientRecord["generalSummary"]>;
 
 function ClinicalSynthesis({
-  pacienteId,
+  patientId,
   generalSummary,
 }: {
-  pacienteId: string;
+  patientId: string;
   generalSummary: ResumoGeral;
 }) {
-  const storageKey = `sintese-prof-${pacienteId}`;
+  const storageKey = `clinical-synthesis-prof-${patientId}`;
   const [editando, setEditando] = useState(false);
-  const [dados, setDados] = useState<SinteseEditavel>({
+  const [dados, setDados] = useState<EditableSynthesis>({
     sintese: "",
     temas: "",
     evolucao: "",
@@ -711,7 +794,7 @@ function ClinicalSynthesis({
       <Tabs defaultValue="professional" className="mt-4">
         <TabsList>
           <TabsTrigger value="professional">Profissional</TabsTrigger>
-          <TabsTrigger value="assistente">Assistente de IA</TabsTrigger>
+          <TabsTrigger value="assistant">Assistente de IA</TabsTrigger>
         </TabsList>
 
         {/* ----- PROFISSIONAL (editável) ----- */}
@@ -809,7 +892,7 @@ function ClinicalSynthesis({
         </TabsContent>
 
         {/* ----- ASSISTENTE (IA) ----- */}
-        <TabsContent value="assistente" className="space-y-4 mt-4">
+        <TabsContent value="assistant" className="space-y-4 mt-4">
           <span className="inline-block text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-2 py-0.5 rounded">
             Gerado por IA
           </span>
@@ -915,23 +998,26 @@ function useLocalString(key: string) {
 
 function ProfessionalAssistantText({
   storageKey,
-  iaConteudo,
+  professionalContent,
+  aiContent,
   placeholder,
   emptyLabel,
-  aba,
+  activeTab,
 }: {
   storageKey: string;
-  iaConteudo: string;
+  professionalContent?: string;
+  aiContent: string;
   placeholder: string;
   emptyLabel: string;
-  aba: "professional" | "assistente";
+  activeTab: "professional" | "assistant";
 }) {
   const [valor, setValor] = useLocalString(storageKey);
   const [editando, setEditando] = useState(false);
   const [rascunho, setRascunho] = useState("");
+  const effectiveProfessionalContent = valor || professionalContent || "";
 
   const iniciarEdicao = () => {
-    setRascunho(valor);
+    setRascunho(effectiveProfessionalContent);
     setEditando(true);
   };
   const salvar = () => {
@@ -940,7 +1026,7 @@ function ProfessionalAssistantText({
   };
 
   return (
-    <Tabs value={aba} className="mt-3">
+    <Tabs value={activeTab} className="mt-3">
       <TabsContent value="professional" className="space-y-3 mt-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-2 py-0.5 rounded">
@@ -957,7 +1043,7 @@ function ProfessionalAssistantText({
             </div>
           ) : (
             <Button variant="outline" size="sm" onClick={iniciarEdicao}>
-              {valor ? "Editar" : "Preencher"}
+              {effectiveProfessionalContent ? "Editar" : "Preencher"}
             </Button>
           )}
         </div>
@@ -968,8 +1054,10 @@ function ProfessionalAssistantText({
             rows={6}
             placeholder={placeholder}
           />
-        ) : valor ? (
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{valor}</p>
+        ) : effectiveProfessionalContent ? (
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+            {effectiveProfessionalContent}
+          </p>
         ) : (
           <div className="rounded-lg border border-dashed p-4 text-center">
             <p className="text-sm text-muted-foreground">{emptyLabel}</p>
@@ -977,11 +1065,19 @@ function ProfessionalAssistantText({
         )}
       </TabsContent>
 
-      <TabsContent value="assistente" className="space-y-3 mt-3">
+      <TabsContent value="assistant" className="space-y-3 mt-3">
         <span className="inline-block text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-2 py-0.5 rounded">
           Gerado por IA
         </span>
-        <p className="text-sm text-foreground leading-relaxed">{iaConteudo}</p>
+        {aiContent ? (
+          <p className="text-sm text-foreground leading-relaxed">{aiContent}</p>
+        ) : (
+          <div className="rounded-lg border border-dashed p-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Nenhum conteúdo gerado por IA para esta sessão ainda.
+            </p>
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   );
@@ -991,16 +1087,16 @@ function ProfessionalAssistantConclusions({
   storageKey,
   aiConclusions,
   insights,
-  abordagem,
-  setAbordagem,
-  aba,
+  approach,
+  setApproach,
+  activeTab,
 }: {
   storageKey: string;
   aiConclusions: UiSession["aiConclusions"];
   insights: string[];
-  abordagem: Abordagem;
-  setAbordagem: (a: Abordagem) => void;
-  aba: "professional" | "assistente";
+  approach: Approach;
+  setApproach: (a: Approach) => void;
+  activeTab: "professional" | "assistant";
 }) {
   type ResumoGeral = NonNullable<UiPatientRecord["generalSummary"]>;
   const [valor, setValor] = useLocalString(storageKey);
@@ -1021,7 +1117,7 @@ function ProfessionalAssistantConclusions({
   };
 
   return (
-    <Tabs value={aba} className="mt-3">
+    <Tabs value={activeTab} className="mt-3">
       <TabsContent value="professional" className="space-y-4 mt-3">
         {/* Conclusões do profissional */}
         <div className="space-y-3">
@@ -1117,19 +1213,19 @@ function ProfessionalAssistantConclusions({
         </div>
       </TabsContent>
 
-      <TabsContent value="assistente" className="space-y-4 mt-3">
+      <TabsContent value="assistant" className="space-y-4 mt-3">
         {/* Conclusões IA por abordagem */}
         <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="inline-block text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-2 py-0.5 rounded self-start">
               Gerado por IA · por abordagem
             </span>
-            <Select value={abordagem} onValueChange={(v) => setAbordagem(v as Abordagem)}>
+            <Select value={approach} onValueChange={(v) => setApproach(v as Approach)}>
               <SelectTrigger className="w-full sm:w-64">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ABORDAGENS.map((a) => (
+                {APPROACH_OPTIONS.map((a) => (
                   <SelectItem key={a.value} value={a.value}>
                     {a.label}
                   </SelectItem>
@@ -1138,7 +1234,9 @@ function ProfessionalAssistantConclusions({
             </Select>
           </div>
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
-            <p className="text-sm text-foreground leading-relaxed">{aiConclusions?.[abordagem]}</p>
+            <p className="text-sm text-foreground leading-relaxed">
+              {aiConclusions?.[APPROACH_TO_AI_KEY[approach]]}
+            </p>
           </div>
         </div>
 

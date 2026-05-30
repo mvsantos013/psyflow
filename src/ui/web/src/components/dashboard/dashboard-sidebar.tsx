@@ -1,9 +1,4 @@
-import {
-  Brain,
-  Home,
-  Shield,
-  Users,
-} from "lucide-react";
+import { Brain, Home, Shield, Users } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useMemo } from "react";
 
@@ -53,14 +48,14 @@ export function DashboardSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        <div className="flex items-center gap-2 px-4 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <div
+          className={`flex items-center py-4 ${collapsed ? "justify-center px-2" : "gap-2 px-4"}`}
+        >
+          <div className="flex h-8 w-8 shrink-0 flex-none items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Brain className="h-4 w-4" />
           </div>
           {!collapsed && (
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              PsyFlow
-            </span>
+            <span className="text-sm font-semibold tracking-tight text-foreground">PsyFlow</span>
           )}
         </div>
 
@@ -75,10 +70,7 @@ export function DashboardSidebar() {
                     isActive={isActive(item.url)}
                     tooltip={collapsed ? item.title : undefined}
                   >
-                    <Link
-                      to={item.url}
-                      className="flex items-center gap-2"
-                    >
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
                     </Link>
@@ -100,10 +92,7 @@ export function DashboardSidebar() {
                     isActive={isActive(item.url)}
                     tooltip={collapsed ? item.title : undefined}
                   >
-                    <Link
-                      to={item.url}
-                      className="flex items-center gap-2"
-                    >
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
                     </Link>

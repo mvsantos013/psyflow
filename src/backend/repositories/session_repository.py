@@ -30,6 +30,13 @@ class SessionRepository:
         response = self._table.get_item(Key=self._session_key(org_id, patient_id, session_id))
         return response.get("Item")
 
+    def delete_by_id(self, org_id: str, patient_id: str, session_id: str) -> bool:
+        response = self._table.delete_item(
+            Key=self._session_key(org_id, patient_id, session_id),
+            ReturnValues="ALL_OLD",
+        )
+        return response.get("Attributes") is not None
+
     def put(self, item: dict):
         self._table.put_item(Item=item)
 

@@ -174,7 +174,7 @@ export function DashboardHome() {
                 className="flex items-center gap-3 rounded-lg border p-3 hover:border-primary/40 hover:bg-primary/5 transition-colors"
               >
                 <img
-                  src={s.patient.avatarUrl}
+                  src={s.patient.avatarUrl || "/images/user-empty.jpg"}
                   alt={s.patient.name}
                   className="h-9 w-9 rounded-full bg-muted object-cover shrink-0"
                 />

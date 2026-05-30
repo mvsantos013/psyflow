@@ -158,7 +158,7 @@ export function PatientsList() {
             className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
           >
             <img
-              src={p.avatarUrl}
+              src={p.avatarUrl || "/images/user-empty.jpg"}
               alt={p.name}
               className="h-12 w-12 rounded-full bg-muted object-cover shrink-0"
             />

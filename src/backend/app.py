@@ -79,14 +79,17 @@ _RATE_LIMIT_POLICY = {
     "create_audio_upload_url": {
         "therapist": {"limit": 30, "window_seconds": 60},
         "admin": {"limit": 60, "window_seconds": 60},
+        "super_admin": {"limit": 120, "window_seconds": 60},
     },
     "save_session_transcription": {
         "therapist": {"limit": 20, "window_seconds": 60},
         "admin": {"limit": 40, "window_seconds": 60},
+        "super_admin": {"limit": 80, "window_seconds": 60},
     },
     "patch_session": {
         "therapist": {"limit": 60, "window_seconds": 60},
         "admin": {"limit": 120, "window_seconds": 60},
+        "super_admin": {"limit": 240, "window_seconds": 60},
     },
 }
 
