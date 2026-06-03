@@ -11,15 +11,23 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as DashboardTranscricaoRouteImport } from './routes/dashboard/transcricao'
 import { Route as DashboardPacientesRouteImport } from './routes/dashboard/pacientes'
 import { Route as DashboardExerciciosRouteImport } from './routes/dashboard/exercicios'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
+import { Route as AuthenticatedTranscricaoRouteImport } from './routes/_authenticated/transcricao'
+import { Route as AuthenticatedPacientesRouteImport } from './routes/_authenticated/pacientes'
+import { Route as AuthenticatedExerciciosRouteImport } from './routes/_authenticated/exercicios'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as DashboardPacientesIndexRouteImport } from './routes/dashboard/pacientes.index'
+import { Route as AuthenticatedPacientesIndexRouteImport } from './routes/_authenticated/pacientes.index'
 import { Route as DashboardPacientesIdRouteImport } from './routes/dashboard/pacientes.$id'
+import { Route as AuthenticatedPacientesIdRouteImport } from './routes/_authenticated/pacientes.$id'
 import { Route as DashboardAdminOrganizationsOrgIdRouteImport } from './routes/dashboard/admin.organizations.$orgId'
+import { Route as AuthenticatedAdminOrganizationsOrgIdRouteImport } from './routes/_authenticated/admin.organizations.$orgId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -31,15 +39,19 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const DashboardTranscricaoRoute = DashboardTranscricaoRouteImport.update({
   id: '/transcricao',
@@ -61,59 +73,119 @@ const DashboardAdminRoute = DashboardAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => DashboardRoute,
 } as any)
+const AuthenticatedTranscricaoRoute =
+  AuthenticatedTranscricaoRouteImport.update({
+    id: '/transcricao',
+    path: '/transcricao',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPacientesRoute = AuthenticatedPacientesRouteImport.update({
+  id: '/pacientes',
+  path: '/pacientes',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedExerciciosRoute = AuthenticatedExerciciosRouteImport.update({
+  id: '/exercicios',
+  path: '/exercicios',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const DashboardPacientesIndexRoute = DashboardPacientesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardPacientesRoute,
 } as any)
+const AuthenticatedPacientesIndexRoute =
+  AuthenticatedPacientesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedPacientesRoute,
+  } as any)
 const DashboardPacientesIdRoute = DashboardPacientesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => DashboardPacientesRoute,
 } as any)
+const AuthenticatedPacientesIdRoute =
+  AuthenticatedPacientesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedPacientesRoute,
+  } as any)
 const DashboardAdminOrganizationsOrgIdRoute =
   DashboardAdminOrganizationsOrgIdRouteImport.update({
     id: '/organizations/$orgId',
     path: '/organizations/$orgId',
     getParentRoute: () => DashboardAdminRoute,
   } as any)
+const AuthenticatedAdminOrganizationsOrgIdRoute =
+  AuthenticatedAdminOrganizationsOrgIdRouteImport.update({
+    id: '/organizations/$orgId',
+    path: '/organizations/$orgId',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/exercicios': typeof AuthenticatedExerciciosRoute
+  '/pacientes': typeof AuthenticatedPacientesRouteWithChildren
+  '/transcricao': typeof AuthenticatedTranscricaoRoute
   '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/exercicios': typeof DashboardExerciciosRoute
   '/dashboard/pacientes': typeof DashboardPacientesRouteWithChildren
   '/dashboard/transcricao': typeof DashboardTranscricaoRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/pacientes/$id': typeof AuthenticatedPacientesIdRoute
   '/dashboard/pacientes/$id': typeof DashboardPacientesIdRoute
+  '/pacientes/': typeof AuthenticatedPacientesIndexRoute
   '/dashboard/pacientes/': typeof DashboardPacientesIndexRoute
+  '/admin/organizations/$orgId': typeof AuthenticatedAdminOrganizationsOrgIdRoute
   '/dashboard/admin/organizations/$orgId': typeof DashboardAdminOrganizationsOrgIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/exercicios': typeof AuthenticatedExerciciosRoute
+  '/transcricao': typeof AuthenticatedTranscricaoRoute
   '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/exercicios': typeof DashboardExerciciosRoute
   '/dashboard/transcricao': typeof DashboardTranscricaoRoute
+  '/': typeof AuthenticatedIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/pacientes/$id': typeof AuthenticatedPacientesIdRoute
   '/dashboard/pacientes/$id': typeof DashboardPacientesIdRoute
+  '/pacientes': typeof AuthenticatedPacientesIndexRoute
   '/dashboard/pacientes': typeof DashboardPacientesIndexRoute
+  '/admin/organizations/$orgId': typeof AuthenticatedAdminOrganizationsOrgIdRoute
   '/dashboard/admin/organizations/$orgId': typeof DashboardAdminOrganizationsOrgIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/exercicios': typeof AuthenticatedExerciciosRoute
+  '/_authenticated/pacientes': typeof AuthenticatedPacientesRouteWithChildren
+  '/_authenticated/transcricao': typeof AuthenticatedTranscricaoRoute
   '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/exercicios': typeof DashboardExerciciosRoute
   '/dashboard/pacientes': typeof DashboardPacientesRouteWithChildren
   '/dashboard/transcricao': typeof DashboardTranscricaoRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/_authenticated/pacientes/$id': typeof AuthenticatedPacientesIdRoute
   '/dashboard/pacientes/$id': typeof DashboardPacientesIdRoute
+  '/_authenticated/pacientes/': typeof AuthenticatedPacientesIndexRoute
   '/dashboard/pacientes/': typeof DashboardPacientesIndexRoute
+  '/_authenticated/admin/organizations/$orgId': typeof AuthenticatedAdminOrganizationsOrgIdRoute
   '/dashboard/admin/organizations/$orgId': typeof DashboardAdminOrganizationsOrgIdRoute
 }
 export interface FileRouteTypes {
@@ -122,42 +194,63 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/login'
+    | '/admin'
+    | '/exercicios'
+    | '/pacientes'
+    | '/transcricao'
     | '/dashboard/admin'
     | '/dashboard/exercicios'
     | '/dashboard/pacientes'
     | '/dashboard/transcricao'
     | '/dashboard/'
+    | '/pacientes/$id'
     | '/dashboard/pacientes/$id'
+    | '/pacientes/'
     | '/dashboard/pacientes/'
+    | '/admin/organizations/$orgId'
     | '/dashboard/admin/organizations/$orgId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/login'
+    | '/admin'
+    | '/exercicios'
+    | '/transcricao'
     | '/dashboard/admin'
     | '/dashboard/exercicios'
     | '/dashboard/transcricao'
+    | '/'
     | '/dashboard'
+    | '/pacientes/$id'
     | '/dashboard/pacientes/$id'
+    | '/pacientes'
     | '/dashboard/pacientes'
+    | '/admin/organizations/$orgId'
     | '/dashboard/admin/organizations/$orgId'
   id:
     | '__root__'
-    | '/'
+    | '/_authenticated'
     | '/dashboard'
     | '/login'
+    | '/_authenticated/admin'
+    | '/_authenticated/exercicios'
+    | '/_authenticated/pacientes'
+    | '/_authenticated/transcricao'
     | '/dashboard/admin'
     | '/dashboard/exercicios'
     | '/dashboard/pacientes'
     | '/dashboard/transcricao'
+    | '/_authenticated/'
     | '/dashboard/'
+    | '/_authenticated/pacientes/$id'
     | '/dashboard/pacientes/$id'
+    | '/_authenticated/pacientes/'
     | '/dashboard/pacientes/'
+    | '/_authenticated/admin/organizations/$orgId'
     | '/dashboard/admin/organizations/$orgId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
 }
@@ -178,11 +271,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {
@@ -191,6 +284,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/dashboard/transcricao': {
       id: '/dashboard/transcricao'
@@ -220,12 +320,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAdminRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_authenticated/transcricao': {
+      id: '/_authenticated/transcricao'
+      path: '/transcricao'
+      fullPath: '/transcricao'
+      preLoaderRoute: typeof AuthenticatedTranscricaoRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/pacientes': {
+      id: '/_authenticated/pacientes'
+      path: '/pacientes'
+      fullPath: '/pacientes'
+      preLoaderRoute: typeof AuthenticatedPacientesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/exercicios': {
+      id: '/_authenticated/exercicios'
+      path: '/exercicios'
+      fullPath: '/exercicios'
+      preLoaderRoute: typeof AuthenticatedExerciciosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/dashboard/pacientes/': {
       id: '/dashboard/pacientes/'
       path: '/'
       fullPath: '/dashboard/pacientes/'
       preLoaderRoute: typeof DashboardPacientesIndexRouteImport
       parentRoute: typeof DashboardPacientesRoute
+    }
+    '/_authenticated/pacientes/': {
+      id: '/_authenticated/pacientes/'
+      path: '/'
+      fullPath: '/pacientes/'
+      preLoaderRoute: typeof AuthenticatedPacientesIndexRouteImport
+      parentRoute: typeof AuthenticatedPacientesRoute
     }
     '/dashboard/pacientes/$id': {
       id: '/dashboard/pacientes/$id'
@@ -234,6 +369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardPacientesIdRouteImport
       parentRoute: typeof DashboardPacientesRoute
     }
+    '/_authenticated/pacientes/$id': {
+      id: '/_authenticated/pacientes/$id'
+      path: '/$id'
+      fullPath: '/pacientes/$id'
+      preLoaderRoute: typeof AuthenticatedPacientesIdRouteImport
+      parentRoute: typeof AuthenticatedPacientesRoute
+    }
     '/dashboard/admin/organizations/$orgId': {
       id: '/dashboard/admin/organizations/$orgId'
       path: '/organizations/$orgId'
@@ -241,8 +383,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAdminOrganizationsOrgIdRouteImport
       parentRoute: typeof DashboardAdminRoute
     }
+    '/_authenticated/admin/organizations/$orgId': {
+      id: '/_authenticated/admin/organizations/$orgId'
+      path: '/organizations/$orgId'
+      fullPath: '/admin/organizations/$orgId'
+      preLoaderRoute: typeof AuthenticatedAdminOrganizationsOrgIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
+
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminOrganizationsOrgIdRoute: typeof AuthenticatedAdminOrganizationsOrgIdRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminOrganizationsOrgIdRoute:
+    AuthenticatedAdminOrganizationsOrgIdRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedPacientesRouteChildren {
+  AuthenticatedPacientesIdRoute: typeof AuthenticatedPacientesIdRoute
+  AuthenticatedPacientesIndexRoute: typeof AuthenticatedPacientesIndexRoute
+}
+
+const AuthenticatedPacientesRouteChildren: AuthenticatedPacientesRouteChildren =
+  {
+    AuthenticatedPacientesIdRoute: AuthenticatedPacientesIdRoute,
+    AuthenticatedPacientesIndexRoute: AuthenticatedPacientesIndexRoute,
+  }
+
+const AuthenticatedPacientesRouteWithChildren =
+  AuthenticatedPacientesRoute._addFileChildren(
+    AuthenticatedPacientesRouteChildren,
+  )
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedExerciciosRoute: typeof AuthenticatedExerciciosRoute
+  AuthenticatedPacientesRoute: typeof AuthenticatedPacientesRouteWithChildren
+  AuthenticatedTranscricaoRoute: typeof AuthenticatedTranscricaoRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedExerciciosRoute: AuthenticatedExerciciosRoute,
+  AuthenticatedPacientesRoute: AuthenticatedPacientesRouteWithChildren,
+  AuthenticatedTranscricaoRoute: AuthenticatedTranscricaoRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
 
 interface DashboardAdminRouteChildren {
   DashboardAdminOrganizationsOrgIdRoute: typeof DashboardAdminOrganizationsOrgIdRoute
@@ -290,7 +487,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
 }
