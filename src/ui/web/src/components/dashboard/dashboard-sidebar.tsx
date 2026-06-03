@@ -16,13 +16,13 @@ import {
 import { useAuth } from "@/lib/auth-context";
 
 const mainItems = [
-  { title: "Visão Geral", url: "/dashboard", icon: Home },
-  { title: "Pacientes", url: "/dashboard/pacientes", icon: Users },
+  { title: "Visão Geral", url: "/", icon: Home },
+  { title: "Pacientes", url: "/pacientes", icon: Users },
 ];
 
 const secondaryItems = [
-  { title: "Exercícios", url: "/dashboard/exercicios", icon: Brain },
-  { title: "Admin Control", url: "/dashboard/admin", icon: Shield },
+  { title: "Exercícios", url: "/exercicios", icon: Brain },
+  { title: "Admin Control", url: "/admin", icon: Shield },
 ];
 
 export function DashboardSidebar() {
@@ -37,11 +37,11 @@ export function DashboardSidebar() {
     if (session?.user.role === "super_admin") {
       return secondaryItems;
     }
-    return secondaryItems.filter((item) => item.url !== "/dashboard/admin");
+    return secondaryItems.filter((item) => item.url !== "/admin");
   }, [session?.user.role]);
 
   const isActive = (path: string) => {
-    if (path === "/dashboard") return currentPath === "/dashboard";
+    if (path === "/") return currentPath === "/";
     return currentPath.startsWith(path);
   };
 

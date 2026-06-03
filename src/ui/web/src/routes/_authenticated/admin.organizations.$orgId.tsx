@@ -48,7 +48,7 @@ import {
 } from "@/hooks/use-organizations";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
-export const Route = createFileRoute("/dashboard/admin/organizations/$orgId")({
+export const Route = createFileRoute("/_authenticated/admin/organizations/$orgId")({
   component: OrganizationDetailsPage,
 });
 

@@ -38,7 +38,7 @@ export function AuthGuard({
       return;
     }
 
-    const target = encodeURIComponent(redirectPath || "/dashboard");
+    const target = encodeURIComponent(redirectPath || "/");
     window.location.replace(`/login?redirect=${target}`);
   }, [status, redirectPath]);
 

@@ -225,7 +225,7 @@ export function DashboardHome() {
               <div key={i}>
                 {s.patient ? (
                   <Link
-                    to="/dashboard/pacientes/$id"
+                    to="/pacientes/$id"
                     params={{ id: s.patient.id }}
                     className="flex items-center gap-3 rounded-lg border p-3 hover:border-primary/40 hover:bg-primary/5 transition-colors"
                   >

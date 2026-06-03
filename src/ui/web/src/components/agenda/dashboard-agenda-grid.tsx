@@ -1315,7 +1315,7 @@ export function DashboardAgendaGrid({
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Paciente</p>
                       <Link
-                        to="/dashboard/pacientes/$id"
+                        to="/pacientes/$id"
                         params={{ id: selected.patientId }}
                         className="text-sm text-primary hover:underline"
                       >

@@ -169,7 +169,7 @@ export function PatientsList() {
         {filtrados.map((p) => (
           <Link
             key={p.id}
-            to="/dashboard/pacientes/$id"
+            to="/pacientes/$id"
             params={{ id: p.id }}
             className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
           >

@@ -46,7 +46,7 @@ import {
   useUpdateOrganization,
 } from "@/hooks/use-organizations";
 
-export const Route = createFileRoute("/dashboard/admin")({
+export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminControlPage,
 });
 

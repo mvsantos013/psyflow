@@ -13,13 +13,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const adminItems = [
-  { title: "Organizações", url: "/dashboard/admin", icon: Building2 },
-];
+const adminItems = [{ title: "Organizações", url: "/admin", icon: Building2 }];
 
-const supportItems = [
-  { title: "Painel principal", url: "/dashboard", icon: LayoutDashboard },
-];
+const supportItems = [{ title: "Painel principal", url: "/", icon: LayoutDashboard }];
 
 export function AdminSidebar() {
   const { state } = useSidebar();
@@ -39,7 +35,9 @@ export function AdminSidebar() {
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-sm font-semibold tracking-tight text-foreground">Admin Control</div>
+              <div className="text-sm font-semibold tracking-tight text-foreground">
+                Admin Control
+              </div>
               <div className="text-xs text-muted-foreground">Organizações e permissões</div>
             </div>
           )}

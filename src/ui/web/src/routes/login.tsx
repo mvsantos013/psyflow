@@ -15,11 +15,11 @@ export const Route = createFileRoute("/login")({
 });
 
 function resolveRedirectTarget(): string {
-  if (typeof window === "undefined") return "/dashboard";
+  if (typeof window === "undefined") return "/";
   const searchParams = new URLSearchParams(window.location.search);
   const redirect = searchParams.get("redirect")?.trim();
   if (!redirect || !redirect.startsWith("/")) {
-    return "/dashboard";
+    return "/";
   }
   return redirect;
 }
@@ -128,7 +128,7 @@ function LoginPage() {
       <div className="relative mx-auto w-full max-w-6xl">
         <div className="mb-8 flex items-center justify-between">
           <Link
-            to="/"
+            to="/login"
             className="flex items-center gap-2.5 text-foreground transition-opacity duration-300 hover:opacity-85"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-transform duration-300 hover:scale-105">
