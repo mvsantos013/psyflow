@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useRouterState } from "@tanstack/react-router";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 import { type AuthRole, type AuthSession } from "@/lib/auth";
 import { useAuth } from "@/lib/auth-context";
@@ -13,8 +14,10 @@ type AuthGuardProps = {
 
 function defaultLoadingFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
-      Carregando sessão...
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+        <DotLottieReact src="/images/loading.lottie" autoplay loop={false} className="h-24 w-24" />
+      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from boto3.dynamodb.conditions import Attr
 from boto3.dynamodb.conditions import Key
 
 
@@ -59,8 +58,3 @@ class SessionRepository:
         )
         return response.get("Attributes", {})
 
-    def scan_by_org(self, org_id: str) -> list[dict]:
-        response = self._table.scan(
-            FilterExpression=Attr("orgId").eq(org_id),
-        )
-        return response.get("Items", [])

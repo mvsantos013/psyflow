@@ -1,5 +1,4 @@
 import type {
-  AgendaEntry,
   ExerciseTemplate,
   Patient,
   PatientStatus,
@@ -77,13 +76,6 @@ type ApiPatientRecord = {
   diagnoses?: string[];
   notes?: string;
   generalSummary?: unknown;
-};
-
-type ApiAgendaEntry = {
-  dayOffset?: number;
-  hour?: number;
-  patientId: string;
-  type?: string;
 };
 
 type ApiTranscription = {
@@ -279,15 +271,6 @@ export function normalizePatientRecord(record: ApiPatientRecord): PatientRecord 
     diagnoses: Array.isArray(record.diagnoses) ? record.diagnoses : [],
     notes: record.notes ?? "",
     generalSummary: normalizeGeneralSummary(record.generalSummary),
-  };
-}
-
-export function normalizeAgendaEntry(entry: ApiAgendaEntry): AgendaEntry {
-  return {
-    dayOffset: Number(entry.dayOffset ?? 0),
-    hour: Number(entry.hour ?? 0),
-    patientId: entry.patientId,
-    type: normalizeSessionType(entry.type),
   };
 }
 

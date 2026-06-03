@@ -412,21 +412,6 @@ Response 200:
 
 Note: actual chat message fields are passthrough from persisted chat items.
 
-### GET /sessions/agenda
-
-Response 200:
-
-```json
-[
-  {
-    "dayOffset": 0,
-    "hour": 14,
-    "patientId": "string",
-    "type": "remote"
-  }
-]
-```
-
 ### GET /patients/{patientId}/record
 
 Path params:
@@ -460,3 +445,154 @@ Response 200:
 
 Response 404:
 - `PATIENT_NOT_FOUND`
+
+## Agenda Events (New)
+
+Agenda events are a scheduling domain separate from clinical sessions.
+
+### GET /agenda/events
+
+Query params:
+- `from` (ISO-8601 datetime, required)
+- `to` (ISO-8601 datetime, required)
+- `includeCancelled` (boolean, optional, default `false`)
+
+Response 200:
+
+```json
+[
+  {
+    "id": "string",
+    "title": "string",
+    "description": "string",
+    "startAt": "2026-05-30T14:00:00Z",
+    "endAt": "2026-05-30T14:50:00Z",
+    "durationMinutes": 50,
+    "eventType": "session",
+    "locationType": "remote",
+    "patientId": "string",
+    "meetingUrl": "https://...",
+    "status": "scheduled",
+    "timezone": "America/Sao_Paulo",
+    "recurrenceRuleId": "string",
+    "occurrenceStartAt": "2026-06-10T14:00:00Z",
+    "createdAt": "ISO-8601",
+    "updatedAt": "ISO-8601",
+    "createdBy": "string"
+  }
+]
+```
+
+Error codes:
+- `BAD_REQUEST`
+
+### GET /agenda/events/{eventId}
+
+Path params:
+- `eventId` (string, required)
+
+Response 200: event object shape from GET /agenda/events.
+
+Response 404:
+- `AGENDA_EVENT_NOT_FOUND`
+
+### POST /agenda/events
+
+Body:
+
+```json
+{
+  "title": "string",
+  "description": "string",
+  "startAt": "2026-05-30T14:00:00Z",
+  "endAt": "2026-05-30T14:50:00Z",
+  "eventType": "session",
+  "locationType": "remote",
+  "patientId": "string",
+  "meetingUrl": "https://...",
+  "timezone": "America/Sao_Paulo",
+  "recurrenceRule": "FREQ=WEEKLY;INTERVAL=1",
+  "recurrenceUntil": "2026-12-31T23:59:59Z"
+}
+```
+
+Response 201: event object shape from GET /agenda/events plus optional `warnings` array.
+
+Notes:
+- For recurring events, API stores recurrence metadata and generates occurrences per query window.
+- Generated recurring occurrences use a virtual id format: `R#<recurrenceRuleId>#<occurrenceStartAtIso>`.
+
+Error codes:
+- `ROLE_FORBIDDEN`
+- `BAD_REQUEST`
+
+### PATCH /agenda/events/{eventId}
+
+Path params:
+- `eventId` (string, required)
+
+Body (all fields optional):
+
+```json
+{
+  "title": "string",
+  "description": "string",
+  "startAt": "2026-05-30T15:00:00Z",
+  "endAt": "2026-05-30T15:50:00Z",
+  "eventType": "followup",
+  "locationType": "inPerson",
+  "patientId": "string",
+  "meetingUrl": "https://...",
+  "status": "scheduled",
+  "timezone": "America/Sao_Paulo",
+  "recurrenceRule": "FREQ=WEEKLY;INTERVAL=1",
+  "recurrenceUntil": "2026-12-31T23:59:59Z",
+  "recurrenceExceptionDates": ["2026-06-10T14:00:00Z"],
+  "applyScope": "single"
+}
+```
+
+`applyScope` accepted values:
+- `single`
+- `following`
+- `series`
+
+Metadata-first behavior notes:
+- `single` on a recurring virtual occurrence creates a detached override (PATCH) or exception date (DELETE).
+- `following` on recurring virtual occurrences splits/truncates recurrence from the selected pivot occurrence forward.
+- `series` updates/deletes the recurrence rule as source-of-truth.
+
+Response 200: updated event object with `applyScope` and `affectedCount`.
+
+Response 404:
+- `AGENDA_EVENT_NOT_FOUND`
+
+Error codes:
+- `ROLE_FORBIDDEN`
+- `BAD_REQUEST`
+
+### DELETE /agenda/events/{eventId}
+
+Path params:
+- `eventId` (string, required)
+
+Query params:
+- `applyScope` (string, optional, default `single`)
+
+Response 200:
+
+```json
+{
+  "ok": true,
+  "eventId": "string",
+  "applyScope": "single",
+  "deletedCount": 1
+}
+```
+
+Response 404:
+- `AGENDA_EVENT_NOT_FOUND`
+
+Error codes:
+- `ROLE_FORBIDDEN`
+- `BAD_REQUEST`

@@ -4,7 +4,7 @@ import logging
 
 import boto3
 from asgiref.wsgi import WsgiToAsgi
-from controllers.agenda_controller import create_agenda_blueprint
+from controllers.agenda_event_controller import create_agenda_event_blueprint
 from controllers.chat_controller import create_chat_blueprint
 from controllers.exercise_controller import create_exercise_blueprint
 from controllers.organization_controller import OrganizationController
@@ -50,12 +50,14 @@ from middleware.error_handlers import register_error_handlers
 from middleware.request_logging import setup_request_logging
 from repositories.chat_repository import ChatRepository
 from repositories.exercise_repository import ExerciseRepository
+from repositories.agenda_event_repository import AgendaEventRepository
+from repositories.agenda_recurrence_rule_repository import AgendaRecurrenceRuleRepository
 from repositories.mood_repository import MoodRepository
 from repositories.organization_repository import OrganizationRepository
 from repositories.patient_repository import PatientRepository
 from repositories.session_repository import SessionRepository
 from repositories.task_repository import TaskRepository
-from services.agenda_service import AgendaService
+from services.agenda_event_service import AgendaEventService
 from services.chat_service import ChatService
 from services.exercise_service import ExerciseService
 from services.mood_service import MoodService
@@ -226,10 +228,22 @@ def _build_chat_blueprint():
     )
 
 
-def _build_agenda_blueprint():
-    service = AgendaService(_session_service)
-    return create_agenda_blueprint(
-        agenda_service=service,
+def _build_agenda_event_blueprint():
+    event_repository = AgendaEventRepository(
+        _dynamodb,
+        table_name=_env("AGENDA_EVENTS_TABLE_NAME", f"psyflow-agenda-events-{_STAGE}"),
+    )
+    recurrence_rule_repository = AgendaRecurrenceRuleRepository(
+        _dynamodb,
+        table_name=_env("AGENDA_RECURRENCE_RULES_TABLE_NAME", f"psyflow-agenda-recurrence-rules-{_STAGE}"),
+    )
+    service = AgendaEventService(
+        event_repository,
+        now_iso=_now_iso,
+        agenda_recurrence_rule_repository=recurrence_rule_repository,
+    )
+    return create_agenda_event_blueprint(
+        agenda_event_service=service,
         deps=_deps,
     )
 
@@ -352,7 +366,7 @@ app.register_blueprint(_build_exercise_blueprint())
 app.register_blueprint(_build_session_blueprint())
 app.register_blueprint(_build_upload_blueprint())
 app.register_blueprint(_build_chat_blueprint())
-app.register_blueprint(_build_agenda_blueprint())
+app.register_blueprint(_build_agenda_event_blueprint())
 app.register_blueprint(_build_patient_record_blueprint())
 app.register_blueprint(_build_patient_blueprint())
 app.register_blueprint(_build_organization_blueprint())

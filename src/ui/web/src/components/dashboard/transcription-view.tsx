@@ -11,13 +11,8 @@ import {
   Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AppSelectContent, AppSelectItem, AppSelectTrigger } from "@/components/ui/app-select";
+import { Select, SelectValue } from "@/components/ui/select";
 import { usePacientes } from "@/hooks/use-pacientes";
 import { useTranscricao } from "@/hooks/use-agenda";
 import { useProntuario } from "@/hooks/use-prontuario";
@@ -152,16 +147,16 @@ export function TranscriptionView() {
                 setErrorMessage(null);
               }}
             >
-              <SelectTrigger className="mt-1.5 w-full">
+              <AppSelectTrigger className="mt-1.5 w-full">
                 <SelectValue placeholder="Selecionar patient" />
-              </SelectTrigger>
-              <SelectContent>
+              </AppSelectTrigger>
+              <AppSelectContent>
                 {pacientesAtivos.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
+                  <AppSelectItem key={p.id} value={p.id}>
                     {p.name}
-                  </SelectItem>
+                  </AppSelectItem>
                 ))}
-              </SelectContent>
+              </AppSelectContent>
             </Select>
           </div>
           <div className="flex-1">
@@ -170,17 +165,17 @@ export function TranscriptionView() {
               value={sessaoId || "AUTO"}
               onValueChange={(v) => setSessaoId(v === "AUTO" ? "" : v)}
             >
-              <SelectTrigger className="mt-1.5 w-full">
+              <AppSelectTrigger className="mt-1.5 w-full">
                 <SelectValue placeholder="Criar automaticamente" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="AUTO">Criar automaticamente</SelectItem>
+              </AppSelectTrigger>
+              <AppSelectContent>
+                <AppSelectItem value="AUTO">Criar automaticamente</AppSelectItem>
                 {sessoesOrdenadas.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
+                  <AppSelectItem key={s.id} value={s.id}>
                     {s.date} · {s.type}
-                  </SelectItem>
+                  </AppSelectItem>
                 ))}
-              </SelectContent>
+              </AppSelectContent>
             </Select>
           </div>
           <Button onClick={handleUpload} disabled={status !== "idle"} className="gap-2">

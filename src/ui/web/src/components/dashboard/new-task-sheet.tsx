@@ -1,17 +1,12 @@
 import { useState } from "react";
 import { BookOpen, Plus, Dumbbell, Headphones, NotebookPen, Repeat2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { AppInput } from "@/components/ui/app-input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { AppTextarea } from "@/components/ui/app-textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AppSelectContent, AppSelectItem, AppSelectTrigger } from "@/components/ui/app-select";
+import { Select, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAddTarefa, type NovaTarefaInput } from "@/hooks/use-prontuario";
 import { useExercicios } from "@/hooks/use-exercicios";
@@ -132,7 +127,7 @@ export function NewTaskSheet({ pacienteId, open, onOpenChange }: NewTaskSheetPro
                 <Label htmlFor="tarefa-titulo">
                   Título <span className="text-destructive">*</span>
                 </Label>
-                <Input
+                <AppInput
                   id="tarefa-titulo"
                   value={titulo}
                   onChange={(e) => setTitulo(e.target.value)}
@@ -145,28 +140,28 @@ export function NewTaskSheet({ pacienteId, open, onOpenChange }: NewTaskSheetPro
                   Tipo <span className="text-destructive">*</span>
                 </Label>
                 <Select value={tipo} onValueChange={(v) => setTipo(v as ExerciseTemplate["type"])}>
-                  <SelectTrigger id="tarefa-tipo">
+                  <AppSelectTrigger id="tarefa-tipo">
                     <SelectValue placeholder="Selecionar tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
+                  </AppSelectTrigger>
+                  <AppSelectContent>
                     {TIPO_OPTIONS.map((t) => {
                       const Icon = TIPO_ICONS[t];
                       return (
-                        <SelectItem key={t} value={t}>
+                        <AppSelectItem key={t} value={t}>
                           <span className="flex items-center gap-2">
                             <Icon className="h-3.5 w-3.5" />
                             {TIPO_LABELS[t]}
                           </span>
-                        </SelectItem>
+                        </AppSelectItem>
                       );
                     })}
-                  </SelectContent>
+                  </AppSelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5 flex-1">
                 <Label htmlFor="tarefa-desc">Descrição / Instruções</Label>
-                <Textarea
+                <AppTextarea
                   id="tarefa-desc"
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}

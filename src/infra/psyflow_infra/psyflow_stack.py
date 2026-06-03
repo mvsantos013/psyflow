@@ -96,6 +96,38 @@ class PsyflowStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
+        agenda_events_table = dynamodb.Table(
+            self,
+            "AgendaEventsTable",
+            table_name=_name("psyflow-agenda-events"),
+            partition_key=dynamodb.Attribute(name="PK", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="SK", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+        agenda_events_table.add_global_secondary_index(
+            index_name="GSI1ByStartTime",
+            partition_key=dynamodb.Attribute(name="GSI1PK", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="GSI1SK", type=dynamodb.AttributeType.STRING),
+            projection_type=dynamodb.ProjectionType.ALL,
+        )
+        agenda_events_table.add_global_secondary_index(
+            index_name="GSI3ByRecurrenceGroup",
+            partition_key=dynamodb.Attribute(name="GSI3PK", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="GSI3SK", type=dynamodb.AttributeType.STRING),
+            projection_type=dynamodb.ProjectionType.ALL,
+        )
+
+        agenda_recurrence_rules_table = dynamodb.Table(
+            self,
+            "AgendaRecurrenceRulesTable",
+            table_name=_name("psyflow-agenda-recurrence-rules"),
+            partition_key=dynamodb.Attribute(name="PK", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="SK", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
         mood_table = dynamodb.Table(
             self,
             "MoodTable",
@@ -186,6 +218,8 @@ class PsyflowStack(Stack):
                 "STAGE": stage,
                 "PATIENTS_TABLE_NAME": patients_table.table_name,
                 "SESSIONS_TABLE_NAME": sessions_table.table_name,
+                "AGENDA_EVENTS_TABLE_NAME": agenda_events_table.table_name,
+                "AGENDA_RECURRENCE_RULES_TABLE_NAME": agenda_recurrence_rules_table.table_name,
                 "MOOD_TABLE_NAME": mood_table.table_name,
                 "TASKS_TABLE_NAME": tasks_table.table_name,
                 "CHAT_TABLE_NAME": chat_table.table_name,
@@ -199,6 +233,8 @@ class PsyflowStack(Stack):
         patients_table.grant_read_data(api_lambda)
 
         sessions_table.grant_read_write_data(api_lambda)
+        agenda_events_table.grant_read_write_data(api_lambda)
+        agenda_recurrence_rules_table.grant_read_write_data(api_lambda)
         mood_table.grant_read_write_data(api_lambda)
         tasks_table.grant_read_write_data(api_lambda)
         chat_table.grant_read_data(api_lambda)
@@ -249,6 +285,8 @@ class PsyflowStack(Stack):
         CfnOutput(self, "ApiLambdaName", value=api_lambda.function_name)
         CfnOutput(self, "PatientsTableName", value=patients_table.table_name)
         CfnOutput(self, "SessionsTableName", value=sessions_table.table_name)
+        CfnOutput(self, "AgendaEventsTableName", value=agenda_events_table.table_name)
+        CfnOutput(self, "AgendaRecurrenceRulesTableName", value=agenda_recurrence_rules_table.table_name)
         CfnOutput(self, "MoodTableName", value=mood_table.table_name)
         CfnOutput(self, "TasksTableName", value=tasks_table.table_name)
         CfnOutput(self, "ChatTableName", value=chat_table.table_name)

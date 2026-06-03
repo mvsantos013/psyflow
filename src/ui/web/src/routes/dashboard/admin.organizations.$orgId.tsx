@@ -25,15 +25,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { AppInput } from "@/components/ui/app-input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AppSelectContent, AppSelectItem, AppSelectTrigger } from "@/components/ui/app-select";
+import { Select, SelectValue } from "@/components/ui/select";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Table,
@@ -398,7 +393,7 @@ function OrganizationDetailsPage() {
               <form className="space-y-4" onSubmit={onAssignSubmit}>
                 <div className="space-y-2">
                   <Label htmlFor="assign-username">Username</Label>
-                  <Input
+                  <AppInput
                     id="assign-username"
                     value={assignForm.username}
                     onChange={(event) =>
@@ -422,14 +417,14 @@ function OrganizationDetailsPage() {
                       }))
                     }
                   >
-                    <SelectTrigger id="assign-role">
+                    <AppSelectTrigger id="assign-role">
                       <SelectValue placeholder="Selecione um papel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="therapist">Terapeuta</SelectItem>
-                      <SelectItem value="assistant">Assistente</SelectItem>
-                    </SelectContent>
+                    </AppSelectTrigger>
+                    <AppSelectContent>
+                      <AppSelectItem value="admin">Admin</AppSelectItem>
+                      <AppSelectItem value="therapist">Terapeuta</AppSelectItem>
+                      <AppSelectItem value="assistant">Assistente</AppSelectItem>
+                    </AppSelectContent>
                   </Select>
                 </div>
 
@@ -473,14 +468,14 @@ function OrganizationDetailsPage() {
                   value={roleSelection}
                   onValueChange={(value) => setRoleSelection(value as typeof roleSelection)}
                 >
-                  <SelectTrigger id="user-role">
+                  <AppSelectTrigger id="user-role">
                     <SelectValue placeholder="Selecione um papel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="therapist">Terapeuta</SelectItem>
-                    <SelectItem value="assistant">Assistente</SelectItem>
-                  </SelectContent>
+                  </AppSelectTrigger>
+                  <AppSelectContent>
+                    <AppSelectItem value="admin">Admin</AppSelectItem>
+                    <AppSelectItem value="therapist">Terapeuta</AppSelectItem>
+                    <AppSelectItem value="assistant">Assistente</AppSelectItem>
+                  </AppSelectContent>
                 </Select>
               </div>
 

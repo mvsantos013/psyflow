@@ -36,16 +36,11 @@ import { formatData, formatDataCurta } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { AppInput } from "@/components/ui/app-input";
+import { AppTextarea } from "@/components/ui/app-textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AppSelectContent, AppSelectItem, AppSelectTrigger } from "@/components/ui/app-select";
+import { Select, SelectValue } from "@/components/ui/select";
 import {
   LineChart,
   Line,
@@ -712,7 +707,7 @@ function WhatsAppChat({ patient }: { patient: { name: string; avatarUrl?: string
       {/* Input */}
       <form onSubmit={enviar} className="border-t bg-muted/30 px-3 py-2 flex items-center gap-2">
         <MessageCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-        <Input
+        <AppInput
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           placeholder="Digite uma mensagem..."
@@ -825,7 +820,7 @@ function ClinicalSynthesis({
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Síntese
                 </label>
-                <Textarea
+                <AppTextarea
                   value={dados.sintese}
                   onChange={(e) => setDados({ ...dados, sintese: e.target.value })}
                   rows={4}
@@ -838,7 +833,7 @@ function ClinicalSynthesis({
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Temas Recorrentes (um por linha)
                   </label>
-                  <Textarea
+                  <AppTextarea
                     value={dados.temas}
                     onChange={(e) => setDados({ ...dados, temas: e.target.value })}
                     rows={4}
@@ -850,7 +845,7 @@ function ClinicalSynthesis({
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Pontos de Atenção (um por linha)
                   </label>
-                  <Textarea
+                  <AppTextarea
                     value={dados.pontos}
                     onChange={(e) => setDados({ ...dados, pontos: e.target.value })}
                     rows={4}
@@ -863,7 +858,7 @@ function ClinicalSynthesis({
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Evolução Geral
                 </label>
-                <Textarea
+                <AppTextarea
                   value={dados.evolucao}
                   onChange={(e) => setDados({ ...dados, evolucao: e.target.value })}
                   rows={3}
@@ -1048,7 +1043,7 @@ function ProfessionalAssistantText({
           )}
         </div>
         {editando ? (
-          <Textarea
+          <AppTextarea
             value={rascunho}
             onChange={(e) => setRascunho(e.target.value)}
             rows={6}
@@ -1141,7 +1136,7 @@ function ProfessionalAssistantConclusions({
             )}
           </div>
           {editando ? (
-            <Textarea
+            <AppTextarea
               value={rascunho}
               onChange={(e) => setRascunho(e.target.value)}
               rows={5}
@@ -1193,7 +1188,7 @@ function ProfessionalAssistantConclusions({
             )}
           </div>
           {editandoInsights ? (
-            <Textarea
+            <AppTextarea
               value={rascunhoInsights}
               onChange={(e) => setRascunhoInsights(e.target.value)}
               rows={3}
@@ -1221,16 +1216,16 @@ function ProfessionalAssistantConclusions({
               Gerado por IA · por abordagem
             </span>
             <Select value={approach} onValueChange={(v) => setApproach(v as Approach)}>
-              <SelectTrigger className="w-full sm:w-64">
+              <AppSelectTrigger className="w-full sm:w-64">
                 <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
+              </AppSelectTrigger>
+              <AppSelectContent>
                 {APPROACH_OPTIONS.map((a) => (
-                  <SelectItem key={a.value} value={a.value}>
+                  <AppSelectItem key={a.value} value={a.value}>
                     {a.label}
-                  </SelectItem>
+                  </AppSelectItem>
                 ))}
-              </SelectContent>
+              </AppSelectContent>
             </Select>
           </div>
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">

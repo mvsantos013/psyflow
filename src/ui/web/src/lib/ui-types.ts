@@ -85,13 +85,6 @@ export type ExerciseTemplate = {
   type: TaskType;
 };
 
-export type AgendaEntry = {
-  dayOffset: number;
-  hour: number;
-  patientId: string;
-  type: SessionType;
-};
-
 export type TranscriptionResult = {
   summary: string;
   insights: string[];

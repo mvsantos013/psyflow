@@ -3,16 +3,11 @@ import { BookOpen, Plus, Dumbbell, Headphones, NotebookPen, Repeat2 } from "luci
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
+import { AppInput } from "@/components/ui/app-input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AppTextarea } from "@/components/ui/app-textarea";
+import { AppSelectContent, AppSelectItem, AppSelectTrigger } from "@/components/ui/app-select";
+import { Select, SelectValue } from "@/components/ui/select";
 import { useExercicios, useAddExercicio, type NovoExercicioInput } from "@/hooks/use-exercicios";
 import { toast } from "sonner";
 import type { ExerciseTemplate } from "@/lib/ui-types";
@@ -97,7 +92,7 @@ function NovoExercicioSheet({
             <Label htmlFor="ex-titulo">
               Título <span className="text-destructive">*</span>
             </Label>
-            <Input
+            <AppInput
               id="ex-titulo"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
@@ -110,22 +105,22 @@ function NovoExercicioSheet({
               Tipo <span className="text-destructive">*</span>
             </Label>
             <Select value={tipo} onValueChange={(v) => setTipo(v as ExerciseTemplate["type"])}>
-              <SelectTrigger id="ex-tipo">
+              <AppSelectTrigger id="ex-tipo">
                 <SelectValue placeholder="Selecionar tipo" />
-              </SelectTrigger>
-              <SelectContent>
+              </AppSelectTrigger>
+              <AppSelectContent>
                 {TIPO_OPTIONS.map((t) => (
-                  <SelectItem key={t} value={t}>
+                  <AppSelectItem key={t} value={t}>
                     {TIPO_LABELS[t]}
-                  </SelectItem>
+                  </AppSelectItem>
                 ))}
-              </SelectContent>
+              </AppSelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5 flex-1">
             <Label htmlFor="ex-desc">Descrição / Instruções</Label>
-            <Textarea
+            <AppTextarea
               id="ex-desc"
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
