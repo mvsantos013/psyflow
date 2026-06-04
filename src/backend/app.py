@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 import boto3
 from asgiref.wsgi import WsgiToAsgi
@@ -103,6 +104,19 @@ _raw_cors_origins = _optional_env("CORS_ALLOW_ORIGINS") or "http://localhost:808
 _cors_allowed_origins = {origin.strip() for origin in _raw_cors_origins.split(",") if origin.strip()}
 
 _rate_limiter = InMemoryRateLimiter()
+
+
+def _read_api_delay_seconds() -> float:
+    raw_value = _optional_env("API_DELAY_SECONDS") or "0"
+    try:
+        delay_seconds = float(raw_value)
+    except (TypeError, ValueError):
+        _logger.warning("Invalid API_DELAY_SECONDS=%r. Falling back to 0.", raw_value)
+        return 0.0
+    return max(0.0, delay_seconds)
+
+
+_API_DELAY_SECONDS = _read_api_delay_seconds()
 
 
 def _build_patient_controller() -> PatientController:
@@ -370,6 +384,14 @@ app.register_blueprint(_build_agenda_event_blueprint())
 app.register_blueprint(_build_patient_record_blueprint())
 app.register_blueprint(_build_patient_blueprint())
 app.register_blueprint(_build_organization_blueprint())
+
+
+@app.before_request
+def _simulate_api_delay():
+    if _API_DELAY_SECONDS <= 0 or request.method == "OPTIONS":
+        return None
+    time.sleep(_API_DELAY_SECONDS)
+    return None
 
 
 @app.after_request

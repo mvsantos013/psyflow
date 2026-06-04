@@ -38,12 +38,10 @@ class PatientRecordService:
             return None
 
         patient = self._to_api_patient(raw_patient)
-        sessions = self._session_service.list_sessions(org_id, patient_id)
         mood = self._mood_service.list_mood(org_id, patient_id)
 
         return {
             "patient": patient,
-            "sessions": sorted(sessions, key=lambda x: x.get("date", ""), reverse=True),
             "moodRecords": sorted(mood, key=lambda x: x.get("date", "")),
             "diagnoses": raw_patient.get("diagnoses", []),
             "notes": raw_patient.get("notes", ""),

@@ -47,6 +47,7 @@ import {
   useUpdateOrganizationUserRole,
 } from "@/hooks/use-organizations";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { useLoadingCrossfade } from "@/hooks/use-loading-crossfade";
 
 export const Route = createFileRoute("/_authenticated/admin/organizations/$orgId")({
   component: OrganizationDetailsPage,
@@ -113,6 +114,10 @@ function OrganizationDetailsPage() {
     () => users.filter((user) => user.membershipStatus !== "inactive" && user.orgId === orgId),
     [users, orgId],
   );
+  const loadingScreen = loadingOrganization || loadingUsers;
+  const { showSkeleton, contentVisible, durationMs } = useLoadingCrossfade(loadingScreen, {
+    durationMs: 300,
+  });
 
   function resetAssignForm() {
     setAssignForm(emptyAssignForm);
@@ -225,9 +230,7 @@ function OrganizationDetailsPage() {
                         Voltar para organizações
                       </Link>
                       <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                        {loadingOrganization
-                          ? "Carregando organização..."
-                          : (organization?.name ?? "Organização")}
+                        {organization?.name ?? "Organização"}
                       </h1>
                       <p className="text-sm text-muted-foreground">
                         Gerencie os usuários associados a esta organização.
@@ -244,29 +247,52 @@ function OrganizationDetailsPage() {
                     </Button>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardDescription>Slug</CardDescription>
-                        <CardTitle className="text-lg">{organization?.slug ?? "-"}</CardTitle>
-                      </CardHeader>
-                    </Card>
+                  <div className="relative min-h-40">
+                    <div
+                      className={`absolute inset-0 z-10 grid gap-4 transition-opacity duration-300 md:grid-cols-3 ${
+                        showSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+                      }`}
+                    >
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Card key={i} className="animate-pulse">
+                          <CardHeader className="pb-2">
+                            <div className="h-4 w-20 rounded bg-muted" />
+                            <div className="mt-2 h-6 w-28 rounded bg-muted" />
+                          </CardHeader>
+                        </Card>
+                      ))}
+                    </div>
 
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardDescription>Status</CardDescription>
-                        <CardTitle className="text-lg">
-                          {organization?.status === "archived" ? "Arquivada" : "Ativa"}
-                        </CardTitle>
-                      </CardHeader>
-                    </Card>
+                    <div
+                      className="grid gap-4 md:grid-cols-3"
+                      style={{
+                        opacity: contentVisible ? 1 : 0,
+                        transition: `opacity ${durationMs}ms ease`,
+                      }}
+                    >
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardDescription>Slug</CardDescription>
+                          <CardTitle className="text-lg">{organization?.slug ?? "-"}</CardTitle>
+                        </CardHeader>
+                      </Card>
 
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardDescription>Usuários ativos</CardDescription>
-                        <CardTitle className="text-3xl">{activeUsers.length}</CardTitle>
-                      </CardHeader>
-                    </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardDescription>Status</CardDescription>
+                          <CardTitle className="text-lg">
+                            {organization?.status === "archived" ? "Arquivada" : "Ativa"}
+                          </CardTitle>
+                        </CardHeader>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardDescription>Usuários ativos</CardDescription>
+                          <CardTitle className="text-3xl">{activeUsers.length}</CardTitle>
+                        </CardHeader>
+                      </Card>
+                    </div>
                   </div>
 
                   <Card>
@@ -278,91 +304,113 @@ function OrganizationDetailsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {loadingUsers ? (
-                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-                          Carregando usuários...
-                        </div>
-                      ) : errorUsers ? (
-                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-destructive">
-                          Não foi possível carregar os usuários.
-                        </div>
-                      ) : users.length === 0 ? (
-                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-                          Nenhum usuário associado a esta organização.
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Usuário</TableHead>
-                              <TableHead>Papel</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead className="text-right">Ações</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {users.map((user) => (
-                              <TableRow key={user.username}>
-                                <TableCell>
-                                  <div>
-                                    <div className="font-medium text-foreground">
-                                      {user.email || user.username}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {user.username}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={roleBadgeVariant(user.role)}>
-                                    {roleLabel(user.role)}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant={user.status === "disabled" ? "outline" : "secondary"}
-                                  >
-                                    {statusLabel(user)}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="inline-flex items-center gap-2">
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-8 w-8"
-                                      aria-label={`Alterar papel de ${user.email || user.username}`}
-                                      title="Alterar papel"
-                                      onClick={() => {
-                                        setRoleDialogUser(user);
-                                        setRoleSelection(
-                                          user.role === "admin" || user.role === "assistant"
-                                            ? user.role
-                                            : "therapist",
-                                        );
-                                      }}
-                                      disabled={updateRole.isPending}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-8 w-8 text-destructive hover:text-destructive"
-                                      aria-label={`Remover ${user.email || user.username} da organização`}
-                                      title="Remover usuário"
-                                      onClick={() => setRemoveTarget(user)}
-                                      disabled={removeUser.isPending}
-                                    >
-                                      <UserMinus className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
+                      <div className="relative min-h-48">
+                        <div
+                          className={`absolute inset-0 z-10 transition-opacity duration-300 ${
+                            showSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+                          }`}
+                        >
+                          <div className="space-y-2">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                              <div
+                                key={i}
+                                className="h-11 rounded-md border bg-muted/40 animate-pulse"
+                              />
                             ))}
-                          </TableBody>
-                        </Table>
-                      )}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            opacity: contentVisible ? 1 : 0,
+                            transition: `opacity ${durationMs}ms ease`,
+                          }}
+                        >
+                          {errorUsers ? (
+                            <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-destructive">
+                              Não foi possível carregar os usuários.
+                            </div>
+                          ) : users.length === 0 ? (
+                            <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+                              Nenhum usuário associado a esta organização.
+                            </div>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Usuário</TableHead>
+                                  <TableHead>Papel</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead className="text-right">Ações</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {users.map((user) => (
+                                  <TableRow key={user.username}>
+                                    <TableCell>
+                                      <div>
+                                        <div className="font-medium text-foreground">
+                                          {user.email || user.username}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {user.username}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant={roleBadgeVariant(user.role)}>
+                                        {roleLabel(user.role)}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant={
+                                          user.status === "disabled" ? "outline" : "secondary"
+                                        }
+                                      >
+                                        {statusLabel(user)}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="inline-flex items-center gap-2">
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-8 w-8"
+                                          aria-label={`Alterar papel de ${user.email || user.username}`}
+                                          title="Alterar papel"
+                                          onClick={() => {
+                                            setRoleDialogUser(user);
+                                            setRoleSelection(
+                                              user.role === "admin" || user.role === "assistant"
+                                                ? user.role
+                                                : "therapist",
+                                            );
+                                          }}
+                                          disabled={updateRole.isPending}
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-8 w-8 text-destructive hover:text-destructive"
+                                          aria-label={`Remover ${user.email || user.username} da organização`}
+                                          title="Remover usuário"
+                                          onClick={() => setRemoveTarget(user)}
+                                          disabled={removeUser.isPending}
+                                        >
+                                          <UserMinus className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>

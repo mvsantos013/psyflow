@@ -45,6 +45,7 @@ import {
   useOrganizations,
   useUpdateOrganization,
 } from "@/hooks/use-organizations";
+import { useLoadingCrossfade } from "@/hooks/use-loading-crossfade";
 
 export const Route = createFileRoute("/dashboard/admin")({
   component: AdminControlPage,
@@ -185,6 +186,9 @@ function AdminControlPage() {
   }
 
   const isSaving = createOrganization.isPending || updateOrganization.isPending;
+  const { showSkeleton, contentVisible, durationMs } = useLoadingCrossfade(isLoading, {
+    durationMs: 150,
+  });
 
   return (
     <AuthGuard
@@ -246,36 +250,62 @@ function AdminControlPage() {
                     </Button>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardDescription>Total</CardDescription>
-                        <CardTitle className="text-3xl">{organizations.length}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-sm text-muted-foreground">
-                        Organizações cadastradas no sistema.
-                      </CardContent>
-                    </Card>
+                  <div className="relative min-h-44">
+                    <div
+                      className={`absolute inset-0 z-10 grid gap-4 transition-opacity duration-300 md:grid-cols-3 ${
+                        showSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+                      }`}
+                    >
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Card key={i} className="animate-pulse">
+                          <CardHeader className="pb-2">
+                            <div className="h-4 w-20 rounded bg-muted" />
+                            <div className="mt-2 h-8 w-12 rounded bg-muted" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="h-4 w-40 rounded bg-muted" />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
 
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardDescription>Ativas</CardDescription>
-                        <CardTitle className="text-3xl">{activeOrganizations.length}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-sm text-muted-foreground">
-                        Organizações disponíveis para uso.
-                      </CardContent>
-                    </Card>
+                    <div
+                      className="grid gap-4 md:grid-cols-3"
+                      style={{
+                        opacity: contentVisible ? 1 : 0,
+                        transition: `opacity ${durationMs}ms ease`,
+                      }}
+                    >
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardDescription>Total</CardDescription>
+                          <CardTitle className="text-3xl">{organizations.length}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                          Organizações cadastradas no sistema.
+                        </CardContent>
+                      </Card>
 
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardDescription>Arquivadas</CardDescription>
-                        <CardTitle className="text-3xl">{archivedOrganizations.length}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-sm text-muted-foreground">
-                        Registros mantidos para histórico.
-                      </CardContent>
-                    </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardDescription>Ativas</CardDescription>
+                          <CardTitle className="text-3xl">{activeOrganizations.length}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                          Organizações disponíveis para uso.
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardDescription>Arquivadas</CardDescription>
+                          <CardTitle className="text-3xl">{archivedOrganizations.length}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                          Registros mantidos para histórico.
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
 
                   <Card>
@@ -286,92 +316,117 @@ function AdminControlPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {isLoading ? (
-                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-                          Carregando organizações...
-                        </div>
-                      ) : isError ? (
-                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-destructive">
-                          Não foi possível carregar as organizações.
-                        </div>
-                      ) : organizations.length === 0 ? (
-                        <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-                          Nenhuma organização encontrada.
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Nome</TableHead>
-                              <TableHead>Slug</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Atualizada em</TableHead>
-                              <TableHead className="text-right">Ações</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {organizations.map((organization) => (
-                              <TableRow key={organization.id}>
-                                <TableCell className="font-medium">
-                                  <div className="flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                                    <div>
-                                      <div className="font-medium text-foreground">
-                                        {organization.name}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        ID: {organization.id}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>{organization.slug}</TableCell>
-                                <TableCell>
-                                  <Badge variant={statusVariant(organization.status)}>
-                                    {statusLabel(organization.status)}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>{formatDateTime(organization.updatedAt)}</TableCell>
-                                <TableCell className="text-right">
-                                  <div className="inline-flex items-center gap-2">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                                      <Link
-                                        to="/admin/organizations/$orgId"
-                                        params={{ orgId: organization.id }}
-                                        aria-label={`Ver detalhes de ${organization.name}`}
-                                        title="Detalhes"
-                                      >
-                                        <Users className="h-4 w-4" />
-                                      </Link>
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      aria-label={`Editar ${organization.name}`}
-                                      title="Editar"
-                                      onClick={() => openEditDialog(organization)}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-destructive hover:text-destructive"
-                                      aria-label={`Arquivar ${organization.name}`}
-                                      title="Arquivar"
-                                      onClick={() => setDeleteTarget(organization)}
-                                      disabled={deleteOrganization.isPending}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
+                      <div className="relative min-h-48">
+                        <div
+                          className={`absolute inset-0 z-10 transition-opacity duration-300 ${
+                            showSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+                          }`}
+                        >
+                          <div className="space-y-2">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                              <div
+                                key={i}
+                                className="h-11 rounded-md border bg-muted/40 animate-pulse"
+                              />
                             ))}
-                          </TableBody>
-                        </Table>
-                      )}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            opacity: contentVisible ? 1 : 0,
+                            transition: `opacity ${durationMs}ms ease`,
+                          }}
+                        >
+                          {isError ? (
+                            <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-destructive">
+                              Não foi possível carregar as organizações.
+                            </div>
+                          ) : organizations.length === 0 ? (
+                            <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+                              Nenhuma organização encontrada.
+                            </div>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Nome</TableHead>
+                                  <TableHead>Slug</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead>Atualizada em</TableHead>
+                                  <TableHead className="text-right">Ações</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {organizations.map((organization) => (
+                                  <TableRow key={organization.id}>
+                                    <TableCell className="font-medium">
+                                      <div className="flex items-center gap-2">
+                                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                                        <div>
+                                          <div className="font-medium text-foreground">
+                                            {organization.name}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            ID: {organization.id}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>{organization.slug}</TableCell>
+                                    <TableCell>
+                                      <Badge variant={statusVariant(organization.status)}>
+                                        {statusLabel(organization.status)}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>{formatDateTime(organization.updatedAt)}</TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="inline-flex items-center gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          asChild
+                                        >
+                                          <Link
+                                            to="/admin/organizations/$orgId"
+                                            params={{ orgId: organization.id }}
+                                            aria-label={`Ver detalhes de ${organization.name}`}
+                                            title="Detalhes"
+                                          >
+                                            <Users className="h-4 w-4" />
+                                          </Link>
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          aria-label={`Editar ${organization.name}`}
+                                          title="Editar"
+                                          onClick={() => openEditDialog(organization)}
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive hover:text-destructive"
+                                          aria-label={`Arquivar ${organization.name}`}
+                                          title="Arquivar"
+                                          onClick={() => setDeleteTarget(organization)}
+                                          disabled={deleteOrganization.isPending}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>

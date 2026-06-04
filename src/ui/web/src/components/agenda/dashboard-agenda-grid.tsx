@@ -22,6 +22,7 @@ import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AppInput } from "@/components/ui/app-input";
 import { Label } from "@/components/ui/label";
 import { AppSelectContent, AppSelectItem, AppSelectTrigger } from "@/components/ui/app-select";
@@ -246,6 +247,7 @@ function minutesToTime(value: number) {
 type DashboardAgendaGridProps = {
   weekStart: Date;
   setWeekStart: (value: Date) => void;
+  isLoading?: boolean;
   pacientesMap: Map<string, Patient>;
   agendaEvents: Array<{
     id: string;
@@ -268,6 +270,7 @@ type AgendaViewMode = "week" | "month";
 export function DashboardAgendaGrid({
   weekStart,
   setWeekStart,
+  isLoading = false,
   pacientesMap,
   agendaEvents,
 }: DashboardAgendaGridProps) {
@@ -311,6 +314,8 @@ export function DashboardAgendaGrid({
     Record<string, { startAt: string; endAt: string }>
   >({});
   const [viewMode, setViewMode] = useState<AgendaViewMode>("week");
+  const [calendarContentVisible, setCalendarContentVisible] = useState(false);
+  const [showCalendarSkeleton, setShowCalendarSkeleton] = useState(true);
 
   const dayColumnRefs = useRef<Array<HTMLDivElement | null>>([]);
   const createDateInputRef = useRef<HTMLInputElement | null>(null);
@@ -743,6 +748,29 @@ export function DashboardAgendaGrid({
     el.scrollTop = 8 * GRID_HOUR_HEIGHT;
   }, [weekStart]);
 
+  useEffect(() => {
+    if (isLoading) {
+      setShowCalendarSkeleton(true);
+      setCalendarContentVisible(false);
+      return;
+    }
+
+    setShowCalendarSkeleton(true);
+
+    const revealTimer = window.setTimeout(() => {
+      setCalendarContentVisible(true);
+    }, 60);
+
+    const hideSkeletonTimer = window.setTimeout(() => {
+      setShowCalendarSkeleton(false);
+    }, 520);
+
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(hideSkeletonTimer);
+    };
+  }, [isLoading]);
+
   const openCreateDialogAtDate = (baseDate: Date, minuteOfDay: number) => {
     resetCreateForm();
 
@@ -955,95 +983,130 @@ export function DashboardAgendaGrid({
                       ))}
                     </div>
 
-                    {diasDaSemana.map((_, di) => (
+                    <div className="col-span-7 relative" style={{ height: `${gridHeight}px` }}>
                       <div
-                        key={di}
-                        ref={(ref) => {
-                          dayColumnRefs.current[di] = ref;
-                        }}
-                        className="bg-card relative cursor-default"
-                        style={{ height: `${gridHeight}px` }}
-                        onClick={(event) => {
-                          const target = event.target as HTMLElement;
-                          if (target.closest("[data-grid-event='true']")) return;
-                          const container = event.currentTarget;
-                          const slot = getCreateSlotFromPointer(container, event.clientY);
-                          openCreateDialogAtSlot(di, slot.clampedMinutes);
-                        }}
+                        className={`absolute inset-0 grid grid-cols-7 gap-px bg-border transition-opacity duration-500 ${
+                          showCalendarSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+                        }`}
                       >
-                        {hours.slice(1).map((hour, i) => (
-                          <div
-                            key={`${di}-${hour}`}
-                            className="absolute left-0 right-0 border-t border-dashed border-border/70"
-                            style={{ top: `${(i + 1) * GRID_HOUR_HEIGHT}px` }}
-                          />
-                        ))}
-
-                        {(agendaByDay.get(di) || []).map((item) => {
-                          const widthPercent = 100 / item.overlapCount;
-                          const leftPercent = item.overlapIndex * widthPercent;
-                          const styles =
-                            item.locationType === "remote"
-                              ? "bg-sky-500/12 border-sky-500/35 hover:bg-sky-500/18 text-sky-900"
-                              : "bg-emerald-500/12 border-emerald-500/35 hover:bg-emerald-500/18 text-emerald-900";
-
-                          return (
-                            <div
-                              key={item.id}
-                              data-grid-event="true"
-                              role="button"
-                              tabIndex={0}
-                              className={`group absolute rounded-md border px-1.5 py-1 transition-colors text-left cursor-pointer ${styles}`}
-                              style={{
-                                top: `${item.top + 2}px`,
-                                height: `${item.height - 4}px`,
-                                width: `calc(${widthPercent}% - 4px)`,
-                                left: `calc(${leftPercent}% + 2px)`,
-                              }}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (suppressNextEventOpenRef.current) {
-                                  suppressNextEventOpenRef.current = false;
-                                  return;
-                                }
-                                onOpen(item);
-                              }}
-                              onPointerDown={(event) => {
-                                const target = event.target as HTMLElement;
-                                if (target.closest("[data-resize-handle='true']")) return;
-                                startDrag(event, item, "move");
-                              }}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
-                                  event.preventDefault();
-                                  onOpen(item);
-                                }
-                              }}
-                            >
-                              <p className="text-[10px] font-semibold leading-tight truncate">
-                                {item.title}
-                              </p>
-                              <p className="text-[10px] leading-tight opacity-80 mt-0.5">
-                                {formatDateTime(item.startAt).split(" ").slice(-1)[0]} -{" "}
-                                {formatDateTime(item.endAt).split(" ").slice(-1)[0]}
-                              </p>
-                              {item.overlapCount > 1 && (
-                                <span className="mt-1 inline-flex rounded-full border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-700">
-                                  Sobreposição
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                data-resize-handle="true"
-                                className="absolute inset-x-1 bottom-1 h-1.5 cursor-ns-resize rounded bg-transparent opacity-0"
-                                title="Redimensionar"
-                                onPointerDown={(event) => startDrag(event, item, "resize")}
+                        {Array.from({ length: 7 }).map((_, colIndex) => (
+                          <div key={colIndex} className="relative h-full bg-card">
+                            {hours.slice(1).map((hour, i) => (
+                              <div
+                                key={`${colIndex}-${hour}`}
+                                className="absolute left-0 right-0 border-t border-dashed border-border/70"
+                                style={{ top: `${(i + 1) * GRID_HOUR_HEIGHT}px` }}
                               />
-                            </div>
-                          );
-                        })}
+                            ))}
+
+                            {hours.slice(0, -1).map((hour, i) => (
+                              <div
+                                key={`sk-${colIndex}-${hour}`}
+                                className="absolute left-2 right-2"
+                                style={{ top: `${i * GRID_HOUR_HEIGHT + 8}px` }}
+                              >
+                                <Skeleton className="h-5 w-full rounded-md" />
+                              </div>
+                            ))}
+                          </div>
+                        ))}
                       </div>
-                    ))}
+
+                      <div
+                        className={`absolute inset-0 grid grid-cols-7 gap-px bg-border transition-opacity duration-500 ${
+                          calendarContentVisible ? "opacity-100" : "opacity-0"
+                        }`}
+                      >
+                        {diasDaSemana.map((_, di) => (
+                          <div
+                            key={di}
+                            ref={(ref) => {
+                              dayColumnRefs.current[di] = ref;
+                            }}
+                            className="bg-card relative cursor-default"
+                            onClick={(event) => {
+                              const target = event.target as HTMLElement;
+                              if (target.closest("[data-grid-event='true']")) return;
+                              const container = event.currentTarget;
+                              const slot = getCreateSlotFromPointer(container, event.clientY);
+                              openCreateDialogAtSlot(di, slot.clampedMinutes);
+                            }}
+                          >
+                            {hours.slice(1).map((hour, i) => (
+                              <div
+                                key={`${di}-${hour}`}
+                                className="absolute left-0 right-0 border-t border-dashed border-border/70"
+                                style={{ top: `${(i + 1) * GRID_HOUR_HEIGHT}px` }}
+                              />
+                            ))}
+
+                            {(agendaByDay.get(di) || []).map((item) => {
+                              const widthPercent = 100 / item.overlapCount;
+                              const leftPercent = item.overlapIndex * widthPercent;
+                              const styles =
+                                item.locationType === "remote"
+                                  ? "bg-sky-500/12 border-sky-500/35 hover:bg-sky-500/18 text-sky-900"
+                                  : "bg-emerald-500/12 border-emerald-500/35 hover:bg-emerald-500/18 text-emerald-900";
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  data-grid-event="true"
+                                  role="button"
+                                  tabIndex={0}
+                                  className={`group absolute rounded-md border px-1.5 py-1 transition-colors text-left cursor-pointer ${styles}`}
+                                  style={{
+                                    top: `${item.top + 2}px`,
+                                    height: `${item.height - 4}px`,
+                                    width: `calc(${widthPercent}% - 4px)`,
+                                    left: `calc(${leftPercent}% + 2px)`,
+                                  }}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    if (suppressNextEventOpenRef.current) {
+                                      suppressNextEventOpenRef.current = false;
+                                      return;
+                                    }
+                                    onOpen(item);
+                                  }}
+                                  onPointerDown={(event) => {
+                                    const target = event.target as HTMLElement;
+                                    if (target.closest("[data-resize-handle='true']")) return;
+                                    startDrag(event, item, "move");
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      onOpen(item);
+                                    }
+                                  }}
+                                >
+                                  <p className="text-[10px] font-semibold leading-tight truncate">
+                                    {item.title}
+                                  </p>
+                                  <p className="text-[10px] leading-tight opacity-80 mt-0.5">
+                                    {formatDateTime(item.startAt).split(" ").slice(-1)[0]} -{" "}
+                                    {formatDateTime(item.endAt).split(" ").slice(-1)[0]}
+                                  </p>
+                                  {item.overlapCount > 1 && (
+                                    <span className="mt-1 inline-flex rounded-full border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-700">
+                                      Sobreposição
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    data-resize-handle="true"
+                                    className="absolute inset-x-1 bottom-1 h-1.5 cursor-ns-resize rounded bg-transparent opacity-0"
+                                    title="Redimensionar"
+                                    onPointerDown={(event) => startDrag(event, item, "resize")}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1073,71 +1136,97 @@ export function DashboardAgendaGrid({
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1">
-              {monthGridDays.map((day) => {
-                const dayKey = toLocalDateKey(day);
-                const events = monthEventsByDay.get(dayKey) ?? [];
-                const outsideMonth = !isSameMonth(day, currentMonthStart);
-                const isToday = isSameDay(day, new Date());
-
-                return (
-                  <div
-                    key={dayKey}
-                    role="button"
-                    tabIndex={0}
-                    className={`min-h-28 rounded-md border p-2 text-left cursor-pointer transition-colors ${
-                      outsideMonth
-                        ? "bg-muted/30 border-border/70"
-                        : "bg-card hover:bg-accent/40 border-border"
-                    }`}
-                    onClick={() => openCreateDialogAtDate(day, 9 * 60)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openCreateDialogAtDate(day, 9 * 60);
-                      }
-                    }}
-                  >
-                    <div
-                      className={`mb-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
-                        isToday
-                          ? "bg-primary text-primary-foreground"
-                          : outsideMonth
-                            ? "text-muted-foreground"
-                            : "text-foreground"
-                      }`}
-                    >
-                      {day.getDate()}
-                    </div>
-
-                    <div className="space-y-1">
-                      {events.slice(0, 3).map((event) => (
-                        <button
-                          key={event.id}
-                          type="button"
-                          className={`w-full truncate rounded px-1.5 py-1 text-[10px] font-medium text-left cursor-pointer ${
-                            event.locationType === "remote"
-                              ? "bg-sky-500/15 text-sky-900"
-                              : "bg-emerald-500/15 text-emerald-900"
-                          }`}
-                          onClick={(eventClick) => {
-                            eventClick.stopPropagation();
-                            openEventFromAgenda(event);
-                          }}
-                          title={`${event.title} · ${formatDateTime(event.startAt)}`}
-                        >
-                          {event.title}
-                        </button>
-                      ))}
-                      {events.length > 3 && (
-                        <p className="text-[10px] text-muted-foreground px-1">
-                          +{events.length - 3} mais
-                        </p>
-                      )}
-                    </div>
+            <div className="relative min-h-86">
+              <div
+                className={`absolute inset-0 transition-opacity duration-500 ${
+                  showCalendarSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+                }`}
+              >
+                <div className="rounded-md border bg-background p-3">
+                  <div className="grid grid-cols-7 gap-2">
+                    {Array.from({ length: 42 }).map((_, index) => (
+                      <div key={index} className="min-h-24 rounded-md border bg-card p-2">
+                        <Skeleton className="h-5 w-5 rounded-full" />
+                        <div className="mt-2 space-y-1.5">
+                          <Skeleton className="h-3 w-full" />
+                          <Skeleton className="h-3 w-4/5" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+              </div>
+
+              <div
+                className={`grid grid-cols-7 gap-1 transition-opacity duration-500 ${
+                  calendarContentVisible ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                {monthGridDays.map((day) => {
+                  const dayKey = toLocalDateKey(day);
+                  const events = monthEventsByDay.get(dayKey) ?? [];
+                  const outsideMonth = !isSameMonth(day, currentMonthStart);
+                  const isToday = isSameDay(day, new Date());
+
+                  return (
+                    <div
+                      key={dayKey}
+                      role="button"
+                      tabIndex={0}
+                      className={`min-h-28 rounded-md border p-2 text-left cursor-pointer transition-colors ${
+                        outsideMonth
+                          ? "bg-muted/30 border-border/70"
+                          : "bg-card hover:bg-accent/40 border-border"
+                      }`}
+                      onClick={() => openCreateDialogAtDate(day, 9 * 60)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openCreateDialogAtDate(day, 9 * 60);
+                        }
+                      }}
+                    >
+                      <div
+                        className={`mb-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
+                          isToday
+                            ? "bg-primary text-primary-foreground"
+                            : outsideMonth
+                              ? "text-muted-foreground"
+                              : "text-foreground"
+                        }`}
+                      >
+                        {day.getDate()}
+                      </div>
+
+                      <div className="space-y-1">
+                        {events.slice(0, 3).map((event) => (
+                          <button
+                            key={event.id}
+                            type="button"
+                            className={`w-full truncate rounded px-1.5 py-1 text-[10px] font-medium text-left cursor-pointer ${
+                              event.locationType === "remote"
+                                ? "bg-sky-500/15 text-sky-900"
+                                : "bg-emerald-500/15 text-emerald-900"
+                            }`}
+                            onClick={(eventClick) => {
+                              eventClick.stopPropagation();
+                              openEventFromAgenda(event);
+                            }}
+                            title={`${event.title} · ${formatDateTime(event.startAt)}`}
+                          >
+                            {event.title}
+                          </button>
+                        ))}
+                        {events.length > 3 && (
+                          <p className="text-[10px] text-muted-foreground px-1">
+                            +{events.length - 3} mais
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center gap-3 mt-3 text-[11px] text-muted-foreground">

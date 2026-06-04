@@ -53,7 +53,7 @@ export function NewTaskSheet({ pacienteId, open, onOpenChange }: NewTaskSheetPro
   const [tipo, setTipo] = useState<ExerciseTemplate["type"] | "">("");
 
   const { mutate, isPending } = useAddTarefa(pacienteId);
-  const { data: exercicios = [] } = useExercicios();
+  const { data: exercicios = [] } = useExercicios({ enabled: open });
 
   function reset() {
     setAba("nova");

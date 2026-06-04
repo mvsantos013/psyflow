@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { AppTextarea } from "@/components/ui/app-textarea";
 import { AppSelectContent, AppSelectItem, AppSelectTrigger } from "@/components/ui/app-select";
 import { Select, SelectValue } from "@/components/ui/select";
+import { useLoadingCrossfade } from "@/hooks/use-loading-crossfade";
 import { useExercicios, useAddExercicio, type NovoExercicioInput } from "@/hooks/use-exercicios";
 import { toast } from "sonner";
 import type { ExerciseTemplate } from "@/lib/ui-types";
@@ -148,6 +149,9 @@ function NovoExercicioSheet({
 export function ExercisesView() {
   const [sheetAberto, setSheetAberto] = useState(false);
   const { data: exercicios = [], isLoading } = useExercicios();
+  const { showSkeleton, contentVisible, durationMs } = useLoadingCrossfade(isLoading, {
+    durationMs: 150,
+  });
 
   return (
     <div className="space-y-6">
@@ -169,51 +173,66 @@ export function ExercisesView() {
       </div>
 
       {/* Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="relative min-h-72">
+        <div
+          className={`absolute inset-0 z-10 grid grid-cols-1 gap-3 transition-opacity duration-300 sm:grid-cols-2 lg:grid-cols-3 ${
+            showSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-36 rounded-xl border bg-card animate-pulse" />
           ))}
         </div>
-      ) : exercicios.length === 0 ? (
-        <div className="rounded-xl border bg-card p-10 text-center">
-          <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />
-          <p className="mt-3 text-sm text-muted-foreground">
-            Nenhum exercício na biblioteca ainda.
-          </p>
-          <Button variant="outline" className="mt-4 gap-2" onClick={() => setSheetAberto(true)}>
-            <Plus className="h-4 w-4" />
-            Adicionar primeiro exercício
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {exercicios.map((ex) => {
-            const Icon = TIPO_ICONS[ex.type];
-            return (
-              <div
-                key={ex.id}
-                className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-foreground leading-snug">{ex.title}</p>
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium ${TIPO_COLORS[ex.type]}`}
+
+        <div
+          style={{
+            opacity: contentVisible ? 1 : 0,
+            transition: `opacity ${durationMs}ms ease`,
+          }}
+        >
+          {exercicios.length === 0 ? (
+            <div className="rounded-xl border bg-card p-10 text-center">
+              <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                Nenhum exercício na biblioteca ainda.
+              </p>
+              <Button variant="outline" className="mt-4 gap-2" onClick={() => setSheetAberto(true)}>
+                <Plus className="h-4 w-4" />
+                Adicionar primeiro exercício
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {exercicios.map((ex) => {
+                const Icon = TIPO_ICONS[ex.type];
+                return (
+                  <div
+                    key={ex.id}
+                    className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm"
                   >
-                    <Icon className="h-3 w-3" />
-                    {TIPO_LABELS[ex.type]}
-                  </span>
-                </div>
-                {ex.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                    {ex.description}
-                  </p>
-                )}
-              </div>
-            );
-          })}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground leading-snug">
+                        {ex.title}
+                      </p>
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium ${TIPO_COLORS[ex.type]}`}
+                      >
+                        <Icon className="h-3 w-3" />
+                        {TIPO_LABELS[ex.type]}
+                      </span>
+                    </div>
+                    {ex.description && (
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                        {ex.description}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <NovoExercicioSheet open={sheetAberto} onOpenChange={setSheetAberto} />
     </div>

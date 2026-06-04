@@ -10,10 +10,11 @@ async function fetchExercicios(): Promise<ExerciseTemplate[]> {
   return Array.isArray(data) ? data.map(normalizeExercise) : [];
 }
 
-export function useExercicios() {
+export function useExercicios(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["exercicios"],
     queryFn: fetchExercicios,
+    enabled: options?.enabled ?? true,
   });
 }
 

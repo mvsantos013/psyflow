@@ -60,6 +60,18 @@ set +a
 uv run flask --app app:app run --host 0.0.0.0 --port 8000 --debug
 ```
 
+### Simulate Slow API Responses (Local)
+
+To test loading states, set `API_DELAY_SECONDS` in `.env.local` (or `.env`) and restart the backend.
+
+Example for 2 seconds:
+
+```bash
+API_DELAY_SECONDS=2
+```
+
+Set it back to `0` (or remove it) to disable the delay.
+
 ## Tests
 
 Run backend tests with the dev dependency group:

@@ -26,6 +26,7 @@ import {
 import {
   useDeleteSession,
   useProntuario,
+  useSessoes,
   useTarefas,
   useUpdateSessionPaid,
 } from "@/hooks/use-prontuario";
@@ -81,11 +82,16 @@ const EMPTY_GENERAL_SUMMARY: NonNullable<UiPatientRecord["generalSummary"]> = {
 };
 
 export function PatientRecordView({ patientId }: { patientId: string }) {
-  const { data: patientRecord, isLoading } = useProntuario(patientId);
-  const { data: tasks = [] } = useTarefas(patientId);
+  const { data: patientRecord, isLoading: recordLoading } = useProntuario(patientId);
+  const [currentTab, setCurrentTab] = useState("resumo");
+  const { data: sessoes = [], isLoading: sessionsLoading } = useSessoes(patientId, {
+    enabled: currentTab === "sessions",
+  });
+  const { data: tasks = [], isLoading: tasksLoading } = useTarefas(patientId, {
+    enabled: currentTab === "tarefas",
+  });
   const updateSessionPaidMutation = useUpdateSessionPaid(patientId);
   const deleteSessionMutation = useDeleteSession(patientId);
-  const generalSummary = patientRecord?.generalSummary ?? null;
   const [approach, setApproach] = useState<Approach>("cbt");
   const [activeTab, setActiveTab] = useState<"professional" | "assistant">("professional");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -93,17 +99,15 @@ export function PatientRecordView({ patientId }: { patientId: string }) {
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
   const [payingSessionId, setPayingSessionId] = useState<string | null>(null);
 
-  const sortedSessions = useMemo(
-    () =>
-      [...(patientRecord?.sessions || [])].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      ),
-    [patientRecord],
+  const sortedSessoes = useMemo(
+    () => [...sessoes].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [sessoes],
   );
 
-  const moodRecords = patientRecord?.moodRecords ?? [];
+  const moodRecords = useMemo(() => patientRecord?.moodRecords ?? [], [patientRecord]);
+  const generalSummary = patientRecord?.generalSummary ?? null;
+  const diagnoses = patientRecord?.diagnoses ?? [];
 
-  // Merge two humor series on a unified sorted date axis
   const moodChartData = useMemo(() => {
     const allDates = [...new Set(moodRecords.map((r) => r.date))].sort();
     return allDates.map((d) => {
@@ -117,26 +121,8 @@ export function PatientRecordView({ patientId }: { patientId: string }) {
     });
   }, [moodRecords]);
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Carregando prontuário...</p>
-      </div>
-    );
-  }
-
-  if (!patientRecord) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Paciente não encontrado.</p>
-      </div>
-    );
-  }
-
-  const { patient, sessions, diagnoses } = patientRecord;
-  const selectedSession =
-    sortedSessions.find((s) => s.id === selectedSessionId) || sortedSessions[0];
-  const isSelectedSessionPaid = selectedSession ? selectedSession.paid : false;
+  const selectedSession = sortedSessoes.find((s) => s.id === selectedSessionId) || sortedSessoes[0];
+  const isSelectedSessionPaid = selectedSession?.paid ?? false;
   const isUpdatingSelectedPaid = selectedSession ? payingSessionId === selectedSession.id : false;
 
   const handlePaidChange = async (sessionId: string, nextPaid: boolean) => {
@@ -155,8 +141,11 @@ export function PatientRecordView({ patientId }: { patientId: string }) {
     setSelectedSessionId(null);
   };
 
+  const patient = patientRecord?.patient;
+
   return (
     <div className="space-y-6">
+      {/* Voltar — always visible */}
       <div className="flex items-center gap-2">
         <Link
           to="/pacientes"
@@ -167,37 +156,58 @@ export function PatientRecordView({ patientId }: { patientId: string }) {
         </Link>
       </div>
 
-      {/* Header patient */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <img
-          src={patient.avatarUrl || "/images/user-empty.jpg"}
-          alt={patient.name}
-          className="h-16 w-16 rounded-full bg-muted object-cover"
-        />
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{patient.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {patient.age} anos · {patient.email} · Tratamento desde{" "}
-            {formatData(patient.treatmentStartDate)}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {diagnoses.map((d) => (
-              <span
-                key={d}
-                className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
-              >
-                <Stethoscope className="h-3 w-3" />
-                {d}
-              </span>
-            ))}
+      {/* Patient header — skeleton while loading, error if not found */}
+      {recordLoading ? (
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 rounded-full bg-muted animate-pulse shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-7 w-52 rounded bg-muted animate-pulse" />
+            <div className="h-4 w-80 max-w-full rounded bg-muted animate-pulse" />
+            <div className="flex gap-2">
+              <div className="h-5 w-24 rounded-full bg-muted animate-pulse" />
+              <div className="h-5 w-20 rounded-full bg-muted animate-pulse" />
+            </div>
           </div>
         </div>
-        <span className="self-start sm:self-center">
-          <StatusBadge status={patient.status} />
-        </span>
-      </div>
+      ) : !patient ? (
+        <div className="rounded-xl border bg-card p-8 text-center">
+          <p className="text-muted-foreground">Paciente não encontrado.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <img
+            src={patient.avatarUrl || "/images/user-empty.jpg"}
+            alt={patient.name}
+            className="h-16 w-16 rounded-full bg-muted object-cover"
+          />
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {patient.name}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {patient.age} anos · {patient.email} · Tratamento desde{" "}
+              {formatData(patient.treatmentStartDate)}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {diagnoses.map((d) => (
+                <span
+                  key={d}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground"
+                >
+                  <Stethoscope className="h-3 w-3" />
+                  {d}
+                </span>
+              ))}
+            </div>
+          </div>
+          <span className="self-start sm:self-center">
+            <StatusBadge status={patient.status} />
+          </span>
+        </div>
+      )}
 
-      <Tabs defaultValue="resumo" className="space-y-6">
+      {/* Tabs — TabsList is always visible (static labels) */}
+      <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="resumo">Visão Geral</TabsTrigger>
           <TabsTrigger value="sessions">Sessões</TabsTrigger>
@@ -206,364 +216,444 @@ export function PatientRecordView({ patientId }: { patientId: string }) {
 
         {/* ========= VISÃO GERAL ========= */}
         <TabsContent value="resumo" className="space-y-6">
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <ClinicalSynthesis
-              patientId={patientId}
-              generalSummary={generalSummary ?? EMPTY_GENERAL_SUMMARY}
-            />
-          </div>
-
-          {moodChartData.length > 0 && (
-            <div className="rounded-xl border bg-card p-6 shadow-sm">
-              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" />
-                Evolução do Humor
-              </h2>
-              <div className="mt-4 h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={moodChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis
-                      dataKey="data"
-                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                      stroke="var(--color-border)"
-                    />
-                    <YAxis
-                      domain={[0, 10]}
-                      tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                      stroke="var(--color-border)"
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--color-card)",
-                        border: "1px solid var(--color-border)",
-                        borderRadius: "0.5rem",
-                        fontSize: 12,
-                      }}
-                      formatter={(value, name) => [
-                        value !== null && value !== undefined ? `${value}/10` : "—",
-                        name === "patient" ? "Paciente" : "Profissional",
-                      ]}
-                    />
-                    <Legend
-                      formatter={(value) => (value === "patient" ? "Paciente" : "Profissional")}
-                      wrapperStyle={{ fontSize: 12 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="patient"
-                      name="patient"
-                      stroke="var(--color-primary)"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: "var(--color-primary)" }}
-                      activeDot={{ r: 5 }}
-                      connectNulls={true}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="professional"
-                      name="professional"
-                      stroke="var(--color-chart-2)"
-                      strokeWidth={2}
-                      strokeDasharray="6 3"
-                      dot={{ r: 4, fill: "var(--color-chart-2)" }}
-                      activeDot={{ r: 5 }}
-                      connectNulls={true}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+          {recordLoading ? (
+            <>
+              {/* Síntese Clínica — title + tabs always visible, only body is skeleton */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-semibold text-foreground">
+                    Síntese Clínica do Caso
+                  </h2>
+                </div>
+                <Tabs defaultValue="professional" className="mt-4">
+                  <TabsList>
+                    <TabsTrigger value="professional">Profissional</TabsTrigger>
+                    <TabsTrigger value="assistant">Assistente de IA</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="professional" className="mt-4 space-y-3">
+                    <div className="h-4 w-full rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-4/6 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-3/6 rounded bg-muted animate-pulse" />
+                  </TabsContent>
+                </Tabs>
               </div>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ========= SESSÕES (lista + detalhes) ========= */}
-        <TabsContent value="sessions" className="space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-primary" />
-              <h2 className="text-base font-semibold text-foreground">
-                Histórico de Sessões ({sessions.length})
-              </h2>
-            </div>
-            {sortedSessions.length > 0 && (
-              <Button size="sm" onClick={() => setIsSessionSheetOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Nova Sessão
-              </Button>
-            )}
-          </div>
-
-          {sortedSessions.length === 0 ? (
-            <div className="rounded-xl border bg-card p-8 text-center shadow-sm">
-              <p className="text-sm text-muted-foreground">
-                Nenhuma sessão registrada ainda. Registre a primeira sessão para começar.
-              </p>
-              <div className="mt-4">
-                <Button size="sm" onClick={() => setIsSessionSheetOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Nova Sessão
-                </Button>
+              {/* Evolução do Humor — title + chart skeleton */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  Evolução do Humor
+                </h2>
+                <div className="mt-4 h-56 rounded bg-muted animate-pulse" />
               </div>
-            </div>
+            </>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-              {/* Lista de sessões */}
-              <div className="space-y-2 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1">
-                {sortedSessions.map((s) => {
-                  const isActive = selectedSession?.id === s.id;
-                  const isSessionPaid = s.paid;
-                  const isUpdatingPaid = payingSessionId === s.id;
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setSelectedSessionId(s.id)}
-                      className={`w-full text-left rounded-lg border p-3 transition-colors ${
-                        isActive
-                          ? "border-primary/50 bg-primary/5"
-                          : "hover:border-primary/30 hover:bg-muted/40"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-foreground">
-                          {formatDataCurta(s.date)}
-                        </span>
-                        {isUpdatingPaid ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Salvando
-                          </span>
-                        ) : isSessionPaid ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                            <Check className="h-3 w-3" /> Pago
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            Não pago
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span
-                          className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium ${
-                            s.type === "remote"
-                              ? "bg-chart-3/10 text-chart-3"
-                              : "bg-chart-1/10 text-chart-1"
-                          }`}
-                        >
-                          {s.type === "remote" ? "Remota" : "Presencial"}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {s.duration}min
-                        </span>
-                        {s.hasTranscription && (
-                          <span className="inline-flex items-center gap-1 text-primary">
-                            <Sparkles className="h-3 w-3" />
-                            IA
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+            <>
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <ClinicalSynthesis
+                  patientId={patientId}
+                  generalSummary={generalSummary ?? EMPTY_GENERAL_SUMMARY}
+                />
               </div>
 
-              {/* Detalhe da sessão selecionada */}
-              {selectedSession && (
-                <div className="space-y-4 min-w-0">
-                  {/* Cabeçalho + pagamento */}
-                  <div className="rounded-xl border bg-card p-5 shadow-sm">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <h3 className="text-base font-semibold text-foreground">
-                          {formatData(selectedSession.date)}
-                        </h3>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>{selectedSession.type === "remote" ? "Remota" : "Presencial"}</span>
-                          <span>·</span>
-                          <span>{selectedSession.duration} min</span>
-                          <span>·</span>
-                          <span>
-                            Humor {selectedSession.moodStart} → {selectedSession.moodEnd}
-                            {selectedSession.moodEnd > selectedSession.moodStart && (
-                              <span className="text-chart-2 font-medium ml-1">
-                                (+{selectedSession.moodEnd - selectedSession.moodStart})
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <label
-                          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
-                            isSelectedSessionPaid
-                              ? "border-emerald-500/50 bg-emerald-500/10"
-                              : "hover:bg-muted/40"
-                          }`}
-                        >
-                          <Checkbox
-                            checked={isSelectedSessionPaid}
-                            disabled={isUpdatingSelectedPaid}
-                            onCheckedChange={(checked) =>
-                              handlePaidChange(selectedSession.id, checked === true)
-                            }
-                          />
-                          <span
-                            className={`text-sm font-medium ${
-                              isSelectedSessionPaid
-                                ? "text-emerald-700 dark:text-emerald-400"
-                                : "text-foreground"
-                            }`}
-                          >
-                            {isUpdatingSelectedPaid
-                              ? "Salvando..."
-                              : isSelectedSessionPaid
-                                ? "Sessão paga"
-                                : "Marcar como paga"}
-                          </span>
-                        </label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          aria-label="Excluir sessão"
-                          title="Excluir sessão"
-                          disabled={deleteSessionMutation.isPending}
-                          onClick={() => handleDeleteSession(selectedSession.id)}
-                        >
-                          {deleteSessionMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Switch compartilhado Profissional / Assistente de IA */}
-                  <div className="flex items-center justify-between">
-                    <Tabs
-                      value={activeTab}
-                      onValueChange={(v) => setActiveTab(v as "professional" | "assistant")}
-                    >
-                      <TabsList>
-                        <TabsTrigger value="professional">Profissional</TabsTrigger>
-                        <TabsTrigger value="assistant">Assistente de IA</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </div>
-
-                  {/* Resumo da sessão */}
-                  <div className="rounded-xl border bg-card p-5 shadow-sm">
-                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Resumo da Sessão
-                    </h3>
-                    <ProfessionalAssistantText
-                      storageKey={`session-summary-prof-${selectedSession.id}`}
-                      professionalContent={selectedSession.summary}
-                      aiContent={selectedSession.hasTranscription ? selectedSession.summary : ""}
-                      placeholder="Escreva seu próprio resumo da sessão..."
-                      emptyLabel="Nenhum resumo registrado por você ainda."
-                      activeTab={activeTab}
-                    />
-                  </div>
-
-                  {/* Conclusões IA */}
-                  {selectedSession.aiConclusions ? (
-                    <div className="rounded-xl border bg-card p-5 shadow-sm">
-                      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                        <Brain className="h-4 w-4 text-primary" />
-                        Conclusões da Sessão
-                      </h3>
-                      <ProfessionalAssistantConclusions
-                        storageKey={`session-conclusion-prof-${selectedSession.id}`}
-                        aiConclusions={selectedSession.aiConclusions}
-                        insights={selectedSession.insights}
-                        approach={approach}
-                        setApproach={setApproach}
-                        activeTab={activeTab}
-                      />
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border bg-card p-5 shadow-sm text-sm text-muted-foreground">
-                      Esta sessão não possui transcrição processada por IA.
-                    </div>
-                  )}
-
-                  {/* Transcrição da Sessão */}
-                  <div className="rounded-xl border bg-card p-5 shadow-sm">
-                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <Mic className="h-4 w-4 text-primary" />
-                      Transcrição da Sessão
-                    </h3>
-                    <div className="mt-3">
-                      <SessionTranscriptionCard
-                        sessaoId={selectedSession.id}
-                        pacienteId={patientId}
-                        temTranscricao={selectedSession.hasTranscription}
-                        transcricaoInicial={selectedSession.transcription}
-                      />
-                    </div>
+              {moodChartData.length > 0 && (
+                <div className="rounded-xl border bg-card p-6 shadow-sm">
+                  <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-primary" />
+                    Evolução do Humor
+                  </h2>
+                  <div className="mt-4 h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={moodChartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                        <XAxis
+                          dataKey="data"
+                          tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                          stroke="var(--color-border)"
+                        />
+                        <YAxis
+                          domain={[0, 10]}
+                          tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                          stroke="var(--color-border)"
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "var(--color-card)",
+                            border: "1px solid var(--color-border)",
+                            borderRadius: "0.5rem",
+                            fontSize: 12,
+                          }}
+                          formatter={(value, name) => [
+                            value !== null && value !== undefined ? `${value}/10` : "—",
+                            name === "patient" ? "Paciente" : "Profissional",
+                          ]}
+                        />
+                        <Legend
+                          formatter={(value) => (value === "patient" ? "Paciente" : "Profissional")}
+                          wrapperStyle={{ fontSize: 12 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="patient"
+                          name="patient"
+                          stroke="var(--color-primary)"
+                          strokeWidth={2}
+                          dot={{ r: 3, fill: "var(--color-primary)" }}
+                          activeDot={{ r: 5 }}
+                          connectNulls={true}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="professional"
+                          name="professional"
+                          stroke="var(--color-chart-2)"
+                          strokeWidth={2}
+                          strokeDasharray="6 3"
+                          dot={{ r: 4, fill: "var(--color-chart-2)" }}
+                          activeDot={{ r: 5 }}
+                          connectNulls={true}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </TabsContent>
 
-        {/* placeholder antigo removido */}
-        {false && (
-          <>
-            <div />
-          </>
-        )}
+        {/* ========= SESSÕES ========= */}
+        <TabsContent value="sessions" className="space-y-4">
+          {sessionsLoading ? (
+            <>
+              {/* Heading always visible */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-semibold text-foreground">Histórico de Sessões</h2>
+                </div>
+                <div className="h-8 w-28 rounded bg-muted animate-pulse" />
+              </div>
+              {/* Two-column skeleton matching the real layout */}
+              <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-16 rounded-lg border bg-muted animate-pulse" />
+                  ))}
+                </div>
+                <div className="space-y-4">
+                  <div className="h-24 rounded-xl border bg-muted animate-pulse" />
+                  <div className="h-52 rounded-xl border bg-muted animate-pulse" />
+                  <div className="h-36 rounded-xl border bg-muted animate-pulse" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-semibold text-foreground">
+                    Histórico de Sessões ({sessoes.length})
+                  </h2>
+                </div>
+                {sortedSessoes.length > 0 && (
+                  <Button size="sm" onClick={() => setIsSessionSheetOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Nova Sessão
+                  </Button>
+                )}
+              </div>
+
+              {sortedSessoes.length === 0 ? (
+                <div className="rounded-xl border bg-card p-8 text-center shadow-sm">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma sessão registrada ainda. Registre a primeira sessão para começar.
+                  </p>
+                  <div className="mt-4">
+                    <Button size="sm" onClick={() => setIsSessionSheetOpen(true)}>
+                      <Plus className="h-4 w-4" />
+                      Nova Sessão
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+                  {/* Lista de sessões */}
+                  <div className="space-y-2 lg:max-h-170 lg:overflow-y-auto lg:pr-1">
+                    {sortedSessoes.map((s) => {
+                      const isActive = selectedSession?.id === s.id;
+                      const isSessionPaid = s.paid;
+                      const isUpdatingPaid = payingSessionId === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => setSelectedSessionId(s.id)}
+                          className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                            isActive
+                              ? "border-primary/50 bg-primary/5"
+                              : "hover:border-primary/30 hover:bg-muted/40"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-foreground">
+                              {formatDataCurta(s.date)}
+                            </span>
+                            {isUpdatingPaid ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Salvando
+                              </span>
+                            ) : isSessionPaid ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                                <Check className="h-3 w-3" /> Pago
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                Não pago
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <span
+                              className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium ${
+                                s.type === "remote"
+                                  ? "bg-chart-3/10 text-chart-3"
+                                  : "bg-chart-1/10 text-chart-1"
+                              }`}
+                            >
+                              {s.type === "remote" ? "Remota" : "Presencial"}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {s.duration}min
+                            </span>
+                            {s.hasTranscription && (
+                              <span className="inline-flex items-center gap-1 text-primary">
+                                <Sparkles className="h-3 w-3" />
+                                IA
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Detalhe da sessão selecionada */}
+                  {selectedSession && (
+                    <div className="space-y-4 min-w-0">
+                      {/* Cabeçalho + pagamento */}
+                      <div className="rounded-xl border bg-card p-5 shadow-sm">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <h3 className="text-base font-semibold text-foreground">
+                              {formatData(selectedSession.date)}
+                            </h3>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              <span>
+                                {selectedSession.type === "remote" ? "Remota" : "Presencial"}
+                              </span>
+                              <span>·</span>
+                              <span>{selectedSession.duration} min</span>
+                              <span>·</span>
+                              <span>
+                                Humor {selectedSession.moodStart} → {selectedSession.moodEnd}
+                                {selectedSession.moodEnd > selectedSession.moodStart && (
+                                  <span className="text-chart-2 font-medium ml-1">
+                                    (+{selectedSession.moodEnd - selectedSession.moodStart})
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <label
+                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+                                isSelectedSessionPaid
+                                  ? "border-emerald-500/50 bg-emerald-500/10"
+                                  : "hover:bg-muted/40"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isSelectedSessionPaid}
+                                disabled={isUpdatingSelectedPaid}
+                                onCheckedChange={(checked) =>
+                                  handlePaidChange(selectedSession.id, checked === true)
+                                }
+                              />
+                              <span
+                                className={`text-sm font-medium ${
+                                  isSelectedSessionPaid
+                                    ? "text-emerald-700 dark:text-emerald-400"
+                                    : "text-foreground"
+                                }`}
+                              >
+                                {isUpdatingSelectedPaid
+                                  ? "Salvando..."
+                                  : isSelectedSessionPaid
+                                    ? "Sessão paga"
+                                    : "Marcar como paga"}
+                              </span>
+                            </label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              aria-label="Excluir sessão"
+                              title="Excluir sessão"
+                              disabled={deleteSessionMutation.isPending}
+                              onClick={() => handleDeleteSession(selectedSession.id)}
+                            >
+                              {deleteSessionMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Switch Profissional / Assistente de IA */}
+                      <div className="flex items-center justify-between">
+                        <Tabs
+                          value={activeTab}
+                          onValueChange={(v) => setActiveTab(v as "professional" | "assistant")}
+                        >
+                          <TabsList>
+                            <TabsTrigger value="professional">Profissional</TabsTrigger>
+                            <TabsTrigger value="assistant">Assistente de IA</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
+
+                      {/* Resumo da sessão */}
+                      <div className="rounded-xl border bg-card p-5 shadow-sm">
+                        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          Resumo da Sessão
+                        </h3>
+                        <ProfessionalAssistantText
+                          storageKey={`session-summary-prof-${selectedSession.id}`}
+                          professionalContent={selectedSession.summary}
+                          aiContent={
+                            selectedSession.hasTranscription ? selectedSession.summary : ""
+                          }
+                          placeholder="Escreva seu próprio resumo da sessão..."
+                          emptyLabel="Nenhum resumo registrado por você ainda."
+                          activeTab={activeTab}
+                        />
+                      </div>
+
+                      {/* Conclusões IA */}
+                      {selectedSession.aiConclusions ? (
+                        <div className="rounded-xl border bg-card p-5 shadow-sm">
+                          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <Brain className="h-4 w-4 text-primary" />
+                            Conclusões da Sessão
+                          </h3>
+                          <ProfessionalAssistantConclusions
+                            storageKey={`session-conclusion-prof-${selectedSession.id}`}
+                            aiConclusions={selectedSession.aiConclusions}
+                            insights={selectedSession.insights}
+                            approach={approach}
+                            setApproach={setApproach}
+                            activeTab={activeTab}
+                          />
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border bg-card p-5 shadow-sm text-sm text-muted-foreground">
+                          Esta sessão não possui transcrição processada por IA.
+                        </div>
+                      )}
+
+                      {/* Transcrição da Sessão */}
+                      <div className="rounded-xl border bg-card p-5 shadow-sm">
+                        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <Mic className="h-4 w-4 text-primary" />
+                          Transcrição da Sessão
+                        </h3>
+                        <div className="mt-3">
+                          <SessionTranscriptionCard
+                            sessaoId={selectedSession.id}
+                            pacienteId={patientId}
+                            temTranscricao={selectedSession.hasTranscription}
+                            transcricaoInicial={selectedSession.transcription}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
 
         {/* ========= TAREFAS ========= */}
         <TabsContent value="tarefas" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ListChecks className="h-4 w-4 text-primary" />
-              <h2 className="text-base font-semibold text-foreground">
-                Tarefas Prescritas ({tasks.length})
-              </h2>
-            </div>
-            <Button size="sm" className="gap-2" onClick={() => setIsTaskSheetOpen(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              Prescrever tarefa
-            </Button>
-          </div>
-          {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma tarefa prescrita.</p>
+          {tasksLoading ? (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="h-5 w-40 rounded bg-muted animate-pulse" />
+                <div className="h-8 w-32 rounded bg-muted animate-pulse" />
+              </div>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-20 rounded-lg border bg-muted animate-pulse" />
+                ))}
+              </div>
+            </>
           ) : (
-            <div className="space-y-3">
-              {tasks.map((t) => (
-                <div key={t.id} className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                  <div
-                    className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
-                      t.status === "completed"
-                        ? "bg-chart-2"
-                        : t.status === "approved"
-                          ? "bg-primary"
-                          : "bg-muted-foreground"
-                    }`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{t.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                        {t.type}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDataCurta(t.prescribedAt)}
-                      </span>
-                    </div>
-                  </div>
+            <>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-semibold text-foreground">
+                    Tarefas Prescritas ({tasks.length})
+                  </h2>
                 </div>
-              ))}
-            </div>
+                <Button size="sm" className="gap-2" onClick={() => setIsTaskSheetOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Prescrever tarefa
+                </Button>
+              </div>
+              {tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma tarefa prescrita.</p>
+              ) : (
+                <div className="space-y-3">
+                  {tasks.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-start gap-3 rounded-lg border bg-card p-4"
+                    >
+                      <div
+                        className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
+                          t.status === "completed"
+                            ? "bg-chart-2"
+                            : t.status === "approved"
+                              ? "bg-primary"
+                              : "bg-muted-foreground"
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{t.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                            {t.type}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDataCurta(t.prescribedAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
@@ -582,7 +672,6 @@ export function PatientRecordView({ patientId }: { patientId: string }) {
     </div>
   );
 }
-
 type ChatMsg = {
   id: string;
   from: "psi" | "patient";

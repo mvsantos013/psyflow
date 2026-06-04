@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { AppSelectContent, AppSelectItem, AppSelectTrigger } from "@/components/ui/app-select";
 import { Select, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useLoadingCrossfade } from "@/hooks/use-loading-crossfade";
 import { useCreatePaciente, usePacientes } from "@/hooks/use-pacientes";
 import { formatDataCurta } from "@/lib/utils";
 
@@ -53,6 +54,9 @@ export function PatientsList() {
   const treatmentStartDateInputRef = useRef<HTMLInputElement | null>(null);
   const { data: pacientes = [], isLoading } = usePacientes();
   const createPaciente = useCreatePaciente();
+  const { showSkeleton, contentVisible, durationMs } = useLoadingCrossfade(isLoading, {
+    durationMs: 150,
+  });
 
   const filtrados = pacientes.filter((p) => {
     const matchBusca =
@@ -134,12 +138,6 @@ export function PatientsList() {
         </Button>
       </div>
 
-      {isLoading && (
-        <div className="rounded-xl border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground">Carregando pacientes...</p>
-        </div>
-      )}
-
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -165,55 +163,73 @@ export function PatientsList() {
         </Select>
       </div>
 
-      <div className="grid gap-3">
-        {filtrados.map((p) => (
-          <Link
-            key={p.id}
-            to="/pacientes/$id"
-            params={{ id: p.id }}
-            className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
-          >
-            <img
-              src={p.avatarUrl || "/images/user-empty.jpg"}
-              alt={p.name}
-              className="h-12 w-12 rounded-full bg-muted object-cover shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
-                <StatusBadge status={p.status} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {p.age} anos · {p.email}
-              </p>
-            </div>
-            <div className="hidden sm:flex items-center gap-6 text-sm">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Humor medio</p>
-                <div className="flex items-center justify-center gap-1 mt-0.5">
-                  {getHumorIcon(p.averageMood)}
-                  <span className="font-medium text-foreground">{p.averageMood.toFixed(1)}</span>
+      <div className="relative" style={{ minHeight: showSkeleton ? "460px" : undefined }}>
+        {/* Skeleton: always absolute so it never affects layout flow */}
+        <div
+          className={`absolute inset-0 grid gap-3 content-start pointer-events-none transition-opacity duration-300 ${
+            showSkeleton ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-20 rounded-xl border bg-muted animate-pulse" />
+          ))}
+        </div>
+
+        {/* Content: always in-flow so it never teleports */}
+        <div
+          className={`grid gap-3 transition-opacity duration-300 ${
+            contentVisible ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {filtrados.map((p) => (
+            <Link
+              key={p.id}
+              to="/pacientes/$id"
+              params={{ id: p.id }}
+              className="flex items-center gap-4 rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
+            >
+              <img
+                src={p.avatarUrl || "/images/user-empty.jpg"}
+                alt={p.name}
+                className="h-12 w-12 rounded-full bg-muted object-cover shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
+                  <StatusBadge status={p.status} />
                 </div>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Registros</p>
-                <p className="font-medium text-foreground mt-0.5">{p.journalCount}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Ultima sessao</p>
-                <p className="font-medium text-foreground mt-0.5">
-                  {formatDataCurta(p.lastSession)}
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {p.age} anos · {p.email}
                 </p>
               </div>
+              <div className="hidden sm:flex items-center gap-6 text-sm">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Humor medio</p>
+                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                    {getHumorIcon(p.averageMood)}
+                    <span className="font-medium text-foreground">{p.averageMood.toFixed(1)}</span>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Registros</p>
+                  <p className="font-medium text-foreground mt-0.5">{p.journalCount}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Ultima sessao</p>
+                  <p className="font-medium text-foreground mt-0.5">
+                    {formatDataCurta(p.lastSession)}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+            </Link>
+          ))}
+          {filtrados.length === 0 && (
+            <div className="rounded-xl border bg-card p-8 text-center">
+              <p className="text-sm text-muted-foreground">Nenhum paciente encontrado.</p>
             </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-          </Link>
-        ))}
-        {filtrados.length === 0 && (
-          <div className="rounded-xl border bg-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">Nenhum paciente encontrado.</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Dialog

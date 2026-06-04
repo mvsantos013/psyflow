@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  Loader2,
   LayoutDashboard,
   Users,
   TrendingUp,
@@ -8,7 +9,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardAgendaGrid } from "@/components/agenda/dashboard-agenda-grid";
 import { useAgendaEventsRange } from "@/hooks/agenda/use-agenda-events";
 import { usePacientes } from "@/hooks/use-pacientes";
@@ -23,7 +24,8 @@ type SessaoAgendada = {
 
 export function DashboardHome() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const { data: pacientes = [] } = usePacientes();
+  const pacientesQuery = usePacientes();
+  const pacientes = useMemo(() => pacientesQuery.data ?? [], [pacientesQuery.data]);
   const pacientesAtivos = pacientes.filter((p) => p.status === "active");
   const pacientesMap = useMemo(() => new Map(pacientes.map((p) => [p.id, p])), [pacientes]);
 
@@ -67,11 +69,12 @@ export function DashboardHome() {
     return d;
   }, [weekStart]);
 
-  const { data: agendaEvents = [] } = useAgendaEventsRange({
+  const agendaRangeQuery = useAgendaEventsRange({
     from: weekStart.toISOString(),
     to: agendaRangeEnd.toISOString(),
     includeCancelled: false,
   });
+  const agendaEvents = useMemo(() => agendaRangeQuery.data ?? [], [agendaRangeQuery.data]);
 
   const presentRangeEnd = useMemo(() => {
     const d = new Date(todayStart);
@@ -79,11 +82,32 @@ export function DashboardHome() {
     return d;
   }, [todayStart]);
 
-  const { data: presentAgendaEvents = [] } = useAgendaEventsRange({
+  const presentAgendaRangeQuery = useAgendaEventsRange({
     from: statsRangeStart.toISOString(),
     to: presentRangeEnd.toISOString(),
     includeCancelled: false,
   });
+  const presentAgendaEvents = useMemo(
+    () => presentAgendaRangeQuery.data ?? [],
+    [presentAgendaRangeQuery.data],
+  );
+
+  const statsLoading = pacientesQuery.isPending || presentAgendaRangeQuery.isPending;
+  const upcomingLoading = presentAgendaRangeQuery.isPending;
+  const calendarLoading = agendaRangeQuery.isPending || agendaRangeQuery.isFetching;
+
+  const [showStatsSkeleton, setShowStatsSkeleton] = useState(true);
+  const [statsContentVisible, setStatsContentVisible] = useState(false);
+  const [showUpcomingSkeleton, setShowUpcomingSkeleton] = useState(true);
+  const [upcomingContentVisible, setUpcomingContentVisible] = useState(false);
+
+  const isInitialLoading =
+    pacientesQuery.isPending || agendaRangeQuery.isPending || presentAgendaRangeQuery.isPending;
+  const isRefreshing =
+    !isInitialLoading &&
+    (pacientesQuery.isFetching ||
+      agendaRangeQuery.isFetching ||
+      presentAgendaRangeQuery.isFetching);
 
   const presentSessions: SessaoAgendada[] = useMemo(() => {
     return presentAgendaEvents
@@ -179,12 +203,66 @@ export function DashboardHome() {
     },
   ];
 
+  useEffect(() => {
+    if (statsLoading) {
+      setShowStatsSkeleton(true);
+      setStatsContentVisible(false);
+      return;
+    }
+
+    setShowStatsSkeleton(true);
+
+    const revealTimer = window.setTimeout(() => {
+      setStatsContentVisible(true);
+    }, 60);
+
+    const hideSkeletonTimer = window.setTimeout(() => {
+      setShowStatsSkeleton(false);
+    }, 200);
+
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(hideSkeletonTimer);
+    };
+  }, [statsLoading]);
+
+  useEffect(() => {
+    if (upcomingLoading) {
+      setShowUpcomingSkeleton(true);
+      setUpcomingContentVisible(false);
+      return;
+    }
+
+    setShowUpcomingSkeleton(true);
+
+    const revealTimer = window.setTimeout(() => {
+      setUpcomingContentVisible(true);
+    }, 60);
+
+    const hideSkeletonTimer = window.setTimeout(() => {
+      setShowUpcomingSkeleton(false);
+    }, 200);
+
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(hideSkeletonTimer);
+    };
+  }, [upcomingLoading]);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Bem-vindo de volta
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Bem-vindo de volta
+          </h1>
+          {isRefreshing ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Atualizando dados
+            </span>
+          ) : null}
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Aqui está o resumo da sua clínica hoje.
         </p>
@@ -197,7 +275,22 @@ export function DashboardHome() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                <p className="mt-1 text-3xl font-semibold text-foreground">{stat.value}</p>
+                <div className="relative mt-1 h-9 w-18">
+                  <div
+                    className={`absolute inset-0 transition-opacity duration-300 ${
+                      showStatsSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+                    }`}
+                  >
+                    <div className="h-8 w-14 animate-pulse rounded-md bg-primary/10" />
+                  </div>
+                  <p
+                    className={`absolute inset-0 text-3xl font-semibold text-foreground transition-opacity duration-300 ${
+                      statsContentVisible ? "opacity-100" : "opacity-0"
+                    }`}
+                  >
+                    {stat.value}
+                  </p>
+                </div>
               </div>
               <div className={`rounded-lg p-2.5 ${stat.color}`}>
                 <stat.icon className="h-5 w-5" />
@@ -215,58 +308,83 @@ export function DashboardHome() {
             <h2 className="text-base font-semibold text-foreground">Próximas Sessões</h2>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </div>
-          <div className="mt-4 space-y-2">
-            {proximasSessoes.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                Sem próximas sessões agendadas.
-              </p>
-            )}
-            {proximasSessoes.map((s, i) => (
-              <div key={i}>
-                {s.patient ? (
-                  <Link
-                    to="/pacientes/$id"
-                    params={{ id: s.patient.id }}
-                    className="flex items-center gap-3 rounded-lg border p-3 hover:border-primary/40 hover:bg-primary/5 transition-colors"
-                  >
-                    <img
-                      src={s.patient.avatarUrl || "/images/user-empty.jpg"}
-                      alt={s.patient.name}
-                      className="h-9 w-9 rounded-full bg-muted object-cover shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {s.patient.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                        {s.tipo === "remote" ? (
-                          <Video className="h-3 w-3" />
-                        ) : (
-                          <MapPin className="h-3 w-3" />
-                        )}
-                        {formatDiaLabel(s.quando)} · {formatHora(s.quando)}
-                      </p>
-                    </div>
-                  </Link>
-                ) : (
-                  <div className="flex items-center gap-3 rounded-lg border p-3">
-                    <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
-                      {s.tipo === "remote" ? (
-                        <Video className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {formatDiaLabel(s.quando)} · {formatHora(s.quando)}
-                      </p>
+          <div className="mt-4 relative">
+            <div
+              className={`absolute inset-0 z-10 space-y-2 transition-opacity duration-300 ${
+                showUpcomingSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
+              }`}
+            >
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="rounded-lg border p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 animate-pulse rounded-full bg-primary/10" />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="h-3.5 w-30 animate-pulse rounded bg-primary/10" />
+                      <div className="h-3 w-36 max-w-full animate-pulse rounded bg-primary/10" />
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
+
+            <div
+              className={`relative z-0 space-y-2 transition-opacity duration-300 ${
+                upcomingContentVisible ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              {proximasSessoes.length === 0 && (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  Sem próximas sessões agendadas.
+                </p>
+              )}
+
+              {proximasSessoes.map((s, i) => (
+                <div key={i}>
+                  {s.patient ? (
+                    <Link
+                      to="/pacientes/$id"
+                      params={{ id: s.patient.id }}
+                      className="flex items-center gap-3 rounded-lg border p-3 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                    >
+                      <img
+                        src={s.patient.avatarUrl || "/images/user-empty.jpg"}
+                        alt={s.patient.name}
+                        className="h-9 w-9 rounded-full bg-muted object-cover shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {s.patient.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                          {s.tipo === "remote" ? (
+                            <Video className="h-3 w-3" />
+                          ) : (
+                            <MapPin className="h-3 w-3" />
+                          )}
+                          {formatDiaLabel(s.quando)} · {formatHora(s.quando)}
+                        </p>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-3 rounded-lg border p-3">
+                      <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                        {s.tipo === "remote" ? (
+                          <Video className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatDiaLabel(s.quando)} · {formatHora(s.quando)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -275,6 +393,7 @@ export function DashboardHome() {
           setWeekStart={setWeekStart}
           pacientesMap={pacientesMap}
           agendaEvents={agendaEvents}
+          isLoading={calendarLoading}
         />
       </div>
 

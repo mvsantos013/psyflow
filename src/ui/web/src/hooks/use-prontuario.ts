@@ -12,6 +12,13 @@ async function fetchPatientRecord(id: string): Promise<PatientRecordWithSummary>
   return normalizePatientRecord(data);
 }
 
+async function fetchSessions(id: string): Promise<Session[]> {
+  const res = await apiFetch(`/api/patients/${id}/sessions`);
+  if (!res.ok) throw new Error("Sessões não encontradas");
+  const data = await res.json();
+  return Array.isArray(data) ? data.map(normalizeSession) : [];
+}
+
 async function fetchTasks(id: string): Promise<PrescribedTask[]> {
   const res = await apiFetch(`/api/patients/${id}/tasks`);
   if (!res.ok) throw new Error("Tarefas não encontradas");
@@ -27,11 +34,19 @@ export function useProntuario(patientId: string) {
   });
 }
 
-export function useTarefas(patientId: string) {
+export function useSessoes(patientId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["sessoes", patientId],
+    queryFn: () => fetchSessions(patientId),
+    enabled: !!patientId && (options?.enabled ?? true),
+  });
+}
+
+export function useTarefas(patientId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["tarefas", patientId],
     queryFn: () => fetchTasks(patientId),
-    enabled: !!patientId,
+    enabled: !!patientId && (options?.enabled ?? true),
   });
 }
 
