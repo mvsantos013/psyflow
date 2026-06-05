@@ -8,6 +8,7 @@ from aws_cdk import aws_apigatewayv2_authorizers as apigwv2_auth
 from aws_cdk import aws_apigatewayv2_integrations as apigwv2_integrations
 from aws_cdk import aws_cognito as cognito
 from aws_cdk import aws_dynamodb as dynamodb
+from aws_cdk import aws_kms as kms
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
 from constructs import Construct
@@ -178,6 +179,14 @@ class PsyflowStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
+        clinical_key = kms.Key(
+            self,
+            "ClinicalDataKey",
+            description=f"psyflow-{stage}: envelope encryption key for clinical session content",
+            enable_key_rotation=True,
+            removal_policy=RemovalPolicy.RETAIN,
+        )
+
         if transcriptions_bucket_name:
             transcriptions_bucket = s3.Bucket.from_bucket_name(
                 self,
@@ -227,6 +236,7 @@ class PsyflowStack(Stack):
                 "ORGANIZATIONS_TABLE_NAME": organizations_table.table_name,
                 "TRANSCRIPTIONS_BUCKET_NAME": effective_transcriptions_bucket_name,
                 "AUDIO_UPLOADS_BUCKET_NAME": effective_transcriptions_bucket_name,
+                "PSYFLOW_KMS_KEY_ARN": clinical_key.key_arn,
             },
         )
 
@@ -242,6 +252,8 @@ class PsyflowStack(Stack):
         organizations_table.grant_read_write_data(api_lambda)
 
         transcriptions_bucket.grant_read_write(api_lambda)
+
+        clinical_key.grant(api_lambda, "kms:GenerateDataKey", "kms:Decrypt")
 
         http_api = apigwv2.HttpApi(
             self,
@@ -293,6 +305,7 @@ class PsyflowStack(Stack):
         CfnOutput(self, "ExercisesTableName", value=exercises_table.table_name)
         CfnOutput(self, "OrganizationsTableName", value=organizations_table.table_name)
         CfnOutput(self, "TranscriptionsBucketName", value=effective_transcriptions_bucket_name)
+        CfnOutput(self, "ClinicalDataKeyArn", value=clinical_key.key_arn)
         CfnOutput(self, "UserPoolId", value=user_pool.user_pool_id)
         CfnOutput(self, "UserPoolArn", value=user_pool.user_pool_arn)
         CfnOutput(self, "UserPoolClientId", value=user_pool_client.user_pool_client_id)

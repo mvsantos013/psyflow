@@ -10,12 +10,20 @@ botocore==1.40.76
     # via
     #   boto3
     #   s3transfer
+cffi==2.0.0 ; platform_python_implementation != 'PyPy'
+    # via cryptography
 click==8.4.1
     # via flask
 colorama==0.4.6 ; sys_platform == 'win32'
-    # via click
+    # via
+    #   click
+    #   pytest
+cryptography==48.0.0
+    # via psyflow-backend
 flask==3.0.3
     # via psyflow-backend
+iniconfig==2.3.0
+    # via pytest
 itsdangerous==2.2.0
     # via flask
 jinja2==3.1.6
@@ -30,8 +38,15 @@ markupsafe==3.0.3
     # via
     #   jinja2
     #   werkzeug
+packaging==26.2
+    # via pytest
+pluggy==1.6.0
+    # via pytest
+pycparser==3.0 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
+    # via cffi
 pyjwt==2.10.1
     # via psyflow-backend
+pytest==8.3.5
 python-dateutil==2.9.0.post0
     # via botocore
 python-dotenv==1.1.1

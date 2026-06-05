@@ -17,11 +17,20 @@ from core.exceptions import UserPoolConfigError
 class OrganizationService:
     _MANAGEABLE_ROLES = {"admin", "therapist", "assistant"}
 
-    def __init__(self, organization_repository, *, now_iso, cognito_client=None, user_pool_id: str | None = None):
+    def __init__(
+        self,
+        organization_repository,
+        *,
+        now_iso,
+        cognito_client=None,
+        user_pool_id: str | None = None,
+        encryption_service=None,
+    ):
         self._organization_repository = organization_repository
         self._now_iso = now_iso
         self._cognito_client = cognito_client
         self._user_pool_id = (user_pool_id or "").strip() or None
+        self._encryption_service = encryption_service
 
     @staticmethod
     def _normalize_slug(slug: str) -> str:
@@ -74,6 +83,8 @@ class OrganizationService:
             "deletedAt": None,
             "deletedBy": None,
         }
+        if self._encryption_service is not None:
+            item.update(self._encryption_service.provision_org_key(organization_id))
         self._organization_repository.save(item)
         return self._to_api_organization(item)
 

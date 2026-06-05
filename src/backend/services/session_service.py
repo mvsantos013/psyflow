@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 import uuid
+
+_CLINICAL_PLAINTEXT_FIELDS = ("summary", "insights", "suggestedTasks")
 
 
 class SessionService:
@@ -12,12 +15,14 @@ class SessionService:
         now_iso,
         optional_env,
         s3_client,
+        encryption_service,
     ):
         self._session_repository = session_repository
         self._session_types = session_types
         self._now_iso = now_iso
         self._optional_env = optional_env
         self._s3_client = s3_client
+        self._encryption_service = encryption_service
 
     @staticmethod
     def _extract_id_from_sk(sk: str, prefix: str) -> str:
@@ -25,9 +30,34 @@ class SessionService:
             return sk
         return sk[len(prefix) :]
 
-    @classmethod
-    def _to_api_session(cls, item: dict) -> dict:
-        session_id = cls._extract_id_from_sk(str(item.get("SK", "")), "SESSION#")
+    def _decrypt_item(self, item: dict) -> dict:
+        """
+        Returns a copy of *item* with ``encryptedContent`` decrypted and merged
+        back as plaintext fields.  Returns the original item unchanged for legacy
+        records that predate encryption (no ``encryptedContent`` field).
+        """
+        envelope = item.get("encryptedContent")
+        if not envelope:
+            return item
+        org_id = item.get("orgId")
+        if not org_id:
+            return item
+        try:
+            payload = json.loads(self._encryption_service.decrypt(org_id, envelope))
+            return {**item, **payload}
+        except Exception:
+            return item
+
+    def _encrypt_clinical(self, org_id: str, summary: str, insights: list, suggested_tasks: list) -> str:
+        payload = json.dumps(
+            {"summary": summary, "insights": insights, "suggestedTasks": suggested_tasks},
+            ensure_ascii=False,
+        )
+        return self._encryption_service.encrypt(org_id, payload)
+
+    def _to_api_session(self, item: dict) -> dict:
+        item = self._decrypt_item(item)
+        session_id = self._extract_id_from_sk(str(item.get("SK", "")), "SESSION#")
         return {
             "id": item.get("id", session_id),
             "patientId": item.get("patientId"),
@@ -78,7 +108,7 @@ class SessionService:
             raise ValueError("type must be 'inPerson' or 'remote'")
 
         session_id = str(uuid.uuid4())
-        item = {
+        item: dict = {
             "PK": self._patient_pk(org_id, patient_id),
             "SK": f"SESSION#{session_id}",
             "id": session_id,
@@ -89,14 +119,13 @@ class SessionService:
             "durationMinutes": duration,
             "moodStart": mood_start,
             "moodEnd": mood_end,
-            "summary": summary,
-            "insights": insights,
-            "suggestedTasks": tasks,
             "paid": bool(paid),
             "createdAt": self._now_iso(),
         }
+        item["encryptedContent"] = self._encrypt_clinical(org_id, summary, insights, tasks)
         self._session_repository.put(item)
-        return self._to_api_session(item)
+        # Merge plaintext back so the returned dict is fully populated without a round-trip
+        return self._to_api_session({**item, "summary": summary, "insights": insights, "suggestedTasks": tasks})
 
     def session_exists(self, org_id: str, patient_id: str, session_id: str) -> bool:
         return self._session_repository.get_by_id(org_id, patient_id, session_id) is not None
@@ -119,10 +148,11 @@ class SessionService:
                 except Exception:
                     transcription_text = None
 
+        latest_plain = self._decrypt_item(latest)
         return {
-            "summary": latest.get("summary", ""),
-            "insights": latest.get("insights", []),
-            "tasks": latest.get("suggestedTasks", []),
+            "summary": latest_plain.get("summary", ""),
+            "insights": latest_plain.get("insights", []),
+            "tasks": latest_plain.get("suggestedTasks", []),
             "transcription": transcription_text,
         }
 
@@ -154,19 +184,19 @@ class SessionService:
                 ServerSideEncryption="AES256",
             )
 
+        update_fields: dict = {
+            "transcription": transcription_text if not store_in_s3 else "",
+            "transcriptionS3Key": str(transcription_s3_key) if transcription_s3_key else "",
+            "audioS3Key": str(audio_s3_key) if audio_s3_key else "",
+            "updatedAt": self._now_iso(),
+            "encryptedContent": self._encrypt_clinical(org_id, summary, insights, tasks),
+        }
         self._session_repository.update_fields(
             org_id,
             patient_id,
             session_id,
-            {
-                "transcription": transcription_text if not store_in_s3 else "",
-                "transcriptionS3Key": str(transcription_s3_key) if transcription_s3_key else "",
-                "audioS3Key": str(audio_s3_key) if audio_s3_key else "",
-                "summary": summary,
-                "insights": insights,
-                "suggestedTasks": tasks,
-                "updatedAt": self._now_iso(),
-            },
+            update_fields,
+            remove_fields=list(_CLINICAL_PLAINTEXT_FIELDS),
         )
 
     def patch_session(

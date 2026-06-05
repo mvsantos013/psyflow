@@ -39,7 +39,15 @@ class SessionRepository:
     def put(self, item: dict):
         self._table.put_item(Item=item)
 
-    def update_fields(self, org_id: str, patient_id: str, session_id: str, fields: dict) -> dict:
+    def update_fields(
+        self,
+        org_id: str,
+        patient_id: str,
+        session_id: str,
+        fields: dict,
+        *,
+        remove_fields: list[str] | None = None,
+    ) -> dict:
         update_parts: list[str] = []
         values: dict = {}
         for key, value in fields.items():
@@ -47,14 +55,23 @@ class SessionRepository:
             update_parts.append(f"{key} = {token}")
             values[token] = value
 
-        if not update_parts:
+        if not update_parts and not remove_fields:
             raise ValueError("at least one field must be provided")
 
-        response = self._table.update_item(
-            Key=self._session_key(org_id, patient_id, session_id),
-            UpdateExpression=f"SET {', '.join(update_parts)}",
-            ExpressionAttributeValues=values,
-            ReturnValues="ALL_NEW",
-        )
+        expression_parts: list[str] = []
+        if update_parts:
+            expression_parts.append(f"SET {', '.join(update_parts)}")
+        if remove_fields:
+            expression_parts.append(f"REMOVE {', '.join(remove_fields)}")
+
+        kwargs: dict = {
+            "Key": self._session_key(org_id, patient_id, session_id),
+            "UpdateExpression": " ".join(expression_parts),
+            "ReturnValues": "ALL_NEW",
+        }
+        if values:
+            kwargs["ExpressionAttributeValues"] = values
+
+        response = self._table.update_item(**kwargs)
         return response.get("Attributes", {})
 

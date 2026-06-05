@@ -60,6 +60,7 @@ from repositories.session_repository import SessionRepository
 from repositories.task_repository import TaskRepository
 from services.agenda_event_service import AgendaEventService
 from services.chat_service import ChatService
+from services.encryption_service import EncryptionService
 from services.exercise_service import ExerciseService
 from services.mood_service import MoodService
 from services.organization_service import OrganizationService
@@ -73,6 +74,7 @@ app = Flask(__name__)
 
 _dynamodb = boto3.resource("dynamodb")
 _s3 = boto3.client("s3")
+_kms = boto3.client("kms")
 _cognito_idp = boto3.client("cognito-idp")
 _STAGE = _env("STAGE", "dev").strip().lower() or "dev"
 
@@ -117,6 +119,22 @@ def _read_api_delay_seconds() -> float:
 
 
 _API_DELAY_SECONDS = _read_api_delay_seconds()
+
+_org_repository = OrganizationRepository(
+    _dynamodb,
+    table_name=_env("ORGANIZATIONS_TABLE_NAME", f"psyflow-organizations-{_STAGE}"),
+)
+_kms_key_arn = _optional_env("PSYFLOW_KMS_KEY_ARN")
+if not _kms_key_arn:
+    raise RuntimeError(
+        "PSYFLOW_KMS_KEY_ARN is not set. "
+        "Deploy the CDK stack and set this env var to the ClinicalDataKey ARN."
+    )
+_encryption_service = EncryptionService(
+    _kms,
+    _org_repository,
+    kms_key_arn=_kms_key_arn,
+)
 
 
 def _build_patient_controller() -> PatientController:
@@ -181,15 +199,12 @@ def _build_exercise_blueprint():
 
 
 def _build_organization_controller() -> OrganizationController:
-    repository = OrganizationRepository(
-        _dynamodb,
-        table_name=_env("ORGANIZATIONS_TABLE_NAME", f"psyflow-organizations-{_STAGE}"),
-    )
     service = OrganizationService(
-        repository,
+        _org_repository,
         now_iso=_now_iso,
         cognito_client=_cognito_idp,
         user_pool_id=_optional_env("USER_POOL_ID"),
+        encryption_service=_encryption_service,
     )
     return OrganizationController(service, json_ready=_json_ready, json_error=_json_error)
 
@@ -205,6 +220,7 @@ def _build_session_service() -> SessionService:
         now_iso=_now_iso,
         optional_env=_optional_env,
         s3_client=_s3,
+        encryption_service=_encryption_service,
     )
 
 
