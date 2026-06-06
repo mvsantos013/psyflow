@@ -81,10 +81,15 @@ _STAGE = _env("STAGE", "dev").strip().lower() or "dev"
 _TASK_TYPES = {"exercise", "audio", "journal", "habit"}
 _SESSION_TYPES = {"inPerson", "remote"}
 _RATE_LIMIT_POLICY = {
-    "create_audio_upload_url": {
+    "upload_session_audio": {
         "therapist": {"limit": 30, "window_seconds": 60},
         "admin": {"limit": 60, "window_seconds": 60},
         "super_admin": {"limit": 120, "window_seconds": 60},
+    },
+    "get_audio_stream": {
+        "therapist": {"limit": 60, "window_seconds": 60},
+        "admin": {"limit": 120, "window_seconds": 60},
+        "super_admin": {"limit": 240, "window_seconds": 60},
     },
     "save_session_transcription": {
         "therapist": {"limit": 20, "window_seconds": 60},
@@ -239,9 +244,11 @@ def _build_upload_blueprint():
     service = UploadService(
         s3_client=_s3,
         uploads_bucket_name_getter=_uploads_bucket_name,
+        encryption_service=_encryption_service,
     )
     return create_upload_blueprint(
         upload_service=service,
+        session_service=_session_service,
         deps=_deps,
     )
 

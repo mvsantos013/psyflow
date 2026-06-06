@@ -1,56 +1,9 @@
 import { apiFetch } from "@/lib/api";
 import { withRetry } from "@/lib/retry";
 
-type SessionPatchPayload = {
-  audioS3Key?: string;
-  transcriptionS3Key?: string;
-  transcriptionStatus?: "none" | "processing" | "done";
+type EncryptedUploadResponse = {
+  audioS3Key: string;
 };
-
-type PresignedUploadResponse = {
-  uploadUrl: string;
-  key: string;
-  headers?: Record<string, string>;
-};
-
-function buildUploadHeaders(file: File, presignedHeaders?: Record<string, string>): Headers {
-  const uploadHeaders = new Headers();
-
-  if (presignedHeaders?.["Content-Type"]) {
-    uploadHeaders.set("Content-Type", presignedHeaders["Content-Type"]);
-  } else if (file.type) {
-    uploadHeaders.set("Content-Type", file.type);
-  }
-
-  if (presignedHeaders?.["x-amz-server-side-encryption"]) {
-    uploadHeaders.set(
-      "x-amz-server-side-encryption",
-      presignedHeaders["x-amz-server-side-encryption"],
-    );
-  }
-
-  return uploadHeaders;
-}
-
-export async function patchSessionMetadata(
-  sessionId: string,
-  patientId: string,
-  payload: SessionPatchPayload,
-): Promise<void> {
-  const response = await withRetry(
-    () =>
-      apiFetch(`/api/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId, ...payload }),
-      }),
-    { stepLabel: "Falha ao atualizar metadados da sessão" },
-  );
-
-  if (!response.ok) {
-    throw new Error("Falha ao atualizar metadados da sessão");
-  }
-}
 
 export async function ensureSessionForPatient(
   patientId: string,
@@ -89,34 +42,15 @@ export async function uploadSessionAudioAndMarkProcessing(
   sessionId: string,
   file: File,
 ): Promise<{ audioS3Key: string }> {
-  const presignRes = await withRetry(
-    () =>
-      apiFetch("/api/uploads/audio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patientId,
-          sessionId,
-          filename: file.name,
-          contentType: file.type || "audio/mpeg",
-        }),
-      }),
-    { stepLabel: "Falha ao gerar URL de upload" },
-  );
-
-  if (!presignRes.ok) {
-    throw new Error("Falha ao gerar URL de upload");
-  }
-
-  const presigned = (await presignRes.json()) as PresignedUploadResponse;
-  const uploadHeaders = buildUploadHeaders(file, presigned.headers);
+  const formData = new FormData();
+  formData.set("patientId", patientId);
+  formData.set("audio", file);
 
   const uploadRes = await withRetry(
     () =>
-      fetch(presigned.uploadUrl, {
-        method: "PUT",
-        headers: uploadHeaders,
-        body: file,
+      apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/audio`, {
+        method: "POST",
+        body: formData,
       }),
     { stepLabel: "Falha no upload para armazenamento" },
   );
@@ -125,12 +59,11 @@ export async function uploadSessionAudioAndMarkProcessing(
     throw new Error("Falha no upload para armazenamento");
   }
 
-  await patchSessionMetadata(sessionId, patientId, {
-    audioS3Key: presigned.key,
-    transcriptionStatus: "processing",
-  });
-
-  return { audioS3Key: presigned.key };
+  const data = (await uploadRes.json()) as EncryptedUploadResponse;
+  if (!data.audioS3Key) {
+    throw new Error("Falha no upload para armazenamento");
+  }
+  return { audioS3Key: data.audioS3Key };
 }
 
 export async function saveSessionTranscriptionAndMarkDone(
@@ -157,8 +90,24 @@ export async function saveSessionTranscriptionAndMarkDone(
   if (!response.ok) {
     throw new Error("Falha ao salvar transcrição");
   }
+}
 
-  await patchSessionMetadata(sessionId, patientId, {
-    transcriptionStatus: "done",
-  });
+export async function getSessionAudioPlaybackBlobUrl(
+  sessionId: string,
+  patientId: string,
+): Promise<string> {
+  const response = await withRetry(
+    () =>
+      apiFetch(
+        `/api/sessions/${encodeURIComponent(sessionId)}/audio?patientId=${encodeURIComponent(patientId)}`,
+      ),
+    { stepLabel: "Falha ao carregar áudio da sessão" },
+  );
+
+  if (!response.ok) {
+    throw new Error("Falha ao carregar áudio da sessão");
+  }
+
+  const payload = await response.blob();
+  return URL.createObjectURL(payload);
 }

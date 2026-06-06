@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, FileText, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toErrorMessage } from "@/lib/retry";
 import {
+  getSessionAudioPlaybackBlobUrl,
   saveSessionTranscriptionAndMarkDone,
   uploadSessionAudioAndMarkProcessing,
 } from "@/lib/session-upload";
@@ -54,9 +55,7 @@ function TranscriptViewer({ text }: { text: string }) {
         <div
           key={i}
           className={`flex gap-2 rounded px-2 py-1 ${
-            line.isPatient
-              ? "bg-muted/40"
-              : "bg-primary/5 border border-primary/10"
+            line.isPatient ? "bg-muted/40" : "bg-primary/5 border border-primary/10"
           }`}
         >
           <span className="shrink-0 font-mono text-[9px] text-muted-foreground/60 tabular-nums w-9 pt-px">
@@ -70,9 +69,7 @@ function TranscriptViewer({ text }: { text: string }) {
             >
               {line.speaker}
             </span>
-            <p className="text-xs text-foreground leading-snug">
-              {line.text}
-            </p>
+            <p className="text-xs text-foreground leading-snug">{line.text}</p>
           </div>
         </div>
       ))}
@@ -89,6 +86,7 @@ interface SessionTranscriptionCardProps {
   pacienteId: string;
   temTranscricao: boolean;
   transcricaoInicial?: string;
+  audioS3Key?: string;
 }
 
 export function SessionTranscriptionCard({
@@ -96,20 +94,67 @@ export function SessionTranscriptionCard({
   pacienteId,
   temTranscricao,
   transcricaoInicial,
+  audioS3Key,
 }: SessionTranscriptionCardProps) {
   const [transcricaoTexto, setTranscricaoTexto] = useState<string>(
-    temTranscricao && transcricaoInicial ? transcricaoInicial : ""
+    temTranscricao && transcricaoInicial ? transcricaoInicial : "",
   );
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioNome, setAudioNome] = useState<string | null>(null);
   const [status, setStatus] = useState<ProcessingStatus>(
-    temTranscricao && transcricaoInicial ? "done" : "idle"
+    temTranscricao && transcricaoInicial ? "done" : "idle",
   );
   const [textoRascunho, setTextoRascunho] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [persistedAudioUrl, setPersistedAudioUrl] = useState<string | null>(null);
+  const persistedAudioUrlRef = useRef<string | null>(null);
 
   const audioInputRef = useRef<HTMLInputElement>(null);
   const txtInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!audioS3Key) {
+      if (persistedAudioUrlRef.current) {
+        URL.revokeObjectURL(persistedAudioUrlRef.current);
+        persistedAudioUrlRef.current = null;
+      }
+      setPersistedAudioUrl(null);
+      return;
+    }
+
+    getSessionAudioPlaybackBlobUrl(sessaoId, pacienteId)
+      .then((url) => {
+        if (!cancelled) {
+          if (persistedAudioUrlRef.current && persistedAudioUrlRef.current !== url) {
+            URL.revokeObjectURL(persistedAudioUrlRef.current);
+          }
+          persistedAudioUrlRef.current = url;
+          setPersistedAudioUrl(url);
+        } else {
+          URL.revokeObjectURL(url);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPersistedAudioUrl(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [audioS3Key, sessaoId, pacienteId]);
+
+  useEffect(() => {
+    return () => {
+      if (persistedAudioUrlRef.current) {
+        URL.revokeObjectURL(persistedAudioUrlRef.current);
+        persistedAudioUrlRef.current = null;
+      }
+    };
+  }, []);
 
   async function handleAudioChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -121,11 +166,7 @@ export function SessionTranscriptionCard({
     setStatus("uploading");
 
     try {
-      const { audioS3Key } = await uploadSessionAudioAndMarkProcessing(
-        pacienteId,
-        sessaoId,
-        file
-      );
+      const { audioS3Key } = await uploadSessionAudioAndMarkProcessing(pacienteId, sessaoId, file);
 
       setStatus("processing");
       const generatedTranscript =
@@ -138,7 +179,7 @@ export function SessionTranscriptionCard({
         sessaoId,
         pacienteId,
         generatedTranscript,
-        audioS3Key
+        audioS3Key,
       );
 
       setTranscricaoTexto(generatedTranscript);
@@ -156,7 +197,7 @@ export function SessionTranscriptionCard({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => setTextoRascunho(ev.target?.result as string ?? "");
+    reader.onload = (ev) => setTextoRascunho((ev.target?.result as string) ?? "");
     reader.readAsText(file);
   }
 
@@ -166,12 +207,7 @@ export function SessionTranscriptionCard({
     setStatus("processing");
 
     try {
-      await saveSessionTranscriptionAndMarkDone(
-        sessaoId,
-        pacienteId,
-        textoRascunho,
-        undefined
-      );
+      await saveSessionTranscriptionAndMarkDone(sessaoId, pacienteId, textoRascunho, undefined);
       setTranscricaoTexto(textoRascunho);
       setStatus("done");
       toast.success("Transcrição salva com sucesso.");
@@ -187,12 +223,11 @@ export function SessionTranscriptionCard({
     return (
       <div className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Carregue o áudio da sessão para reprodução e geração automática de transcrição, ou cole/importe o texto diretamente.
+          Carregue o áudio da sessão para reprodução e geração automática de transcrição, ou
+          cole/importe o texto diretamente.
         </p>
 
-        {errorMessage && (
-          <p className="text-xs text-amber-600">{errorMessage}</p>
-        )}
+        {errorMessage && <p className="text-xs text-amber-600">{errorMessage}</p>}
 
         <input
           ref={audioInputRef}
@@ -218,11 +253,7 @@ export function SessionTranscriptionCard({
             <Mic className="h-4 w-4" />
             Carregar áudio
           </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => txtInputRef.current?.click()}
-          >
+          <Button variant="outline" className="gap-2" onClick={() => txtInputRef.current?.click()}>
             <FileText className="h-4 w-4" />
             Importar .txt
           </Button>
@@ -260,19 +291,17 @@ export function SessionTranscriptionCard({
 
   return (
     <div className="space-y-4">
-      {errorMessage && (
-        <p className="text-xs text-amber-600">{errorMessage}</p>
-      )}
+      {errorMessage && <p className="text-xs text-amber-600">{errorMessage}</p>}
 
-      {audioUrl && (
+      {(persistedAudioUrl || audioUrl) && (
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <Mic className="h-3.5 w-3.5" />
-            {audioNome}
+            {audioNome || "Áudio da sessão"}
           </p>
           <audio
             controls
-            src={audioUrl}
+            src={persistedAudioUrl || audioUrl || undefined}
             className="w-full h-9"
             style={{ borderRadius: "0.5rem" }}
           />

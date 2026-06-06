@@ -25,7 +25,7 @@ class PsyflowStack(Stack):
         def _name(base: str) -> str:
             return f"{base}-{stage}"
 
-        transcriptions_bucket_name = os.getenv("TRANSCRIPTIONS_BUCKET_NAME", "")
+        transcriptions_bucket_name = os.getenv("TRANSCRIPTIONS_BUCKET_NAME", "TranscriptionsBucket")
 
         user_pool = cognito.UserPool(
             self,

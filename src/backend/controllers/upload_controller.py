@@ -1,62 +1,101 @@
 from __future__ import annotations
 
-from core.validation import JsonField
-from core.validation import JsonSchema
 from flask import Blueprint, jsonify
-
-_CREATE_UPLOAD_URL_SCHEMA = JsonSchema(
-    fields={
-        "patientId": JsonField(required=True),
-        "sessionId": JsonField(required=True),
-        "filename": JsonField(),
-        "contentType": JsonField(),
-        "expiresIn": JsonField(),
-    }
-)
+from flask import Response
+from flask import request
 
 
 def create_upload_blueprint(
     *,
     upload_service,
+    session_service,
     deps,
 ):
     bp = Blueprint("uploads", __name__)
     d = deps
 
-    @bp.post("/api/uploads/audio")
-    def create_audio_upload_url():
+    @bp.get("/api/sessions/<session_id>/audio")
+    def get_audio_stream(session_id: str):
         org_id, role = d.extract_auth_context()
         d.require_write_role(role)
         d.enforce_sensitive_rate_limit(
-            "create_audio_upload_url",
+            "get_audio_stream",
             org_id=org_id,
             user_id=d.extract_user_sub(),
             role=role,
         )
-        payload = d.validate_json_schema(_CREATE_UPLOAD_URL_SCHEMA)
 
-        patient_id = d.require_string(payload, "patientId", max_length=128)
-        session_id = d.require_string(payload, "sessionId", max_length=128)
+        patient_id = request.args.get("patientId", "")
+        patient_id = d.require_string({"patientId": patient_id}, "patientId", max_length=128)
 
         if not d.session_exists(org_id, patient_id, session_id):
             return d.json_error(404, "SESSION_NOT_FOUND", "session not found")
 
-        filename = d.optional_string(payload, "filename", max_length=255)
-        content_type = d.optional_string(payload, "contentType", max_length=120) or "audio/mpeg"
-        expires_in = (
-            d.require_int(payload, "expiresIn", min_value=60, max_value=3600)
-            if payload.get("expiresIn") is not None
-            else 900
+        session = session_service.get_session(org_id, patient_id, session_id)
+        if not session:
+            return d.json_error(404, "SESSION_NOT_FOUND", "session not found")
+
+        audio_s3_key = session.get("audioS3Key")
+        if not audio_s3_key:
+            return d.json_error(404, "AUDIO_NOT_FOUND", "audio not found")
+
+        data = upload_service.get_decrypted_audio(
+            org_id=org_id,
+            object_key=str(audio_s3_key),
+        )
+        response = Response(data["payload"], mimetype=str(data["contentType"]))
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @bp.post("/api/sessions/<session_id>/audio")
+    def upload_encrypted_audio(session_id: str):
+        org_id, role = d.extract_auth_context()
+        d.require_write_role(role)
+        d.enforce_sensitive_rate_limit(
+            "upload_session_audio",
+            org_id=org_id,
+            user_id=d.extract_user_sub(),
+            role=role,
         )
 
-        data = upload_service.create_audio_upload_url(
+        patient_id = request.form.get("patientId", "")
+        patient_id = d.require_string({"patientId": patient_id}, "patientId", max_length=128)
+
+        if not d.session_exists(org_id, patient_id, session_id):
+            return d.json_error(404, "SESSION_NOT_FOUND", "session not found")
+
+        audio_file = request.files.get("audio")
+        if audio_file is None:
+            raise ValueError("audio file is required")
+
+        payload = audio_file.read()
+        filename = audio_file.filename or None
+        content_type = (audio_file.mimetype or "").strip() or "application/octet-stream"
+
+        stored = upload_service.store_encrypted_audio(
+            org_id=org_id,
+            patient_id=patient_id,
+            session_id=session_id,
+            payload=payload,
+            filename=filename,
+            content_type=content_type,
+        )
+        session_service.patch_session(
             org_id,
             patient_id,
             session_id,
-            filename=str(filename) if filename else None,
-            content_type=content_type,
-            expires_in=expires_in,
+            audio_s3_key=str(stored["key"]),
+            transcription_s3_key=None,
+            transcription_status="processing",
+            paid=None,
         )
-        return jsonify(data)
+
+        return jsonify(
+            {
+                "ok": True,
+                "sessionId": session_id,
+                "audioS3Key": stored["key"],
+            }
+        )
 
     return bp

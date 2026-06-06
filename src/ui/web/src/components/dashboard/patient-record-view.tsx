@@ -580,6 +580,7 @@ export function PatientRecordView({ patientId }: { patientId: string }) {
                             pacienteId={patientId}
                             temTranscricao={selectedSession.hasTranscription}
                             transcricaoInicial={selectedSession.transcription}
+                            audioS3Key={selectedSession.audioS3Key}
                           />
                         </div>
                       </div>

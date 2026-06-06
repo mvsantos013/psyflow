@@ -83,9 +83,42 @@ class SessionService:
     def _build_transcription_object_key(org_id: str, patient_id: str, session_id: str) -> str:
         return f"orgs/{org_id}/patients/{patient_id}/sessions/{session_id}/transcription.txt"
 
+    def _load_transcription_text(self, org_id: str, item: dict) -> str | None:
+        transcription_text = item.get("transcription")
+        if transcription_text:
+            return str(transcription_text)
+
+        transcription_s3_key = item.get("transcriptionS3Key")
+        if not transcription_s3_key:
+            return None
+
+        bucket = self._optional_env("TRANSCRIPTIONS_BUCKET_NAME")
+        if not bucket:
+            return None
+
+        try:
+            response = self._s3_client.get_object(Bucket=bucket, Key=str(transcription_s3_key))
+            raw_payload = response["Body"].read().decode("utf-8")
+            try:
+                # Current format: application-layer encrypted envelope.
+                return self._encryption_service.decrypt(org_id, raw_payload)
+            except Exception:
+                # Backward compatibility for legacy plaintext objects.
+                return raw_payload
+        except Exception:
+            return None
+
     def list_sessions(self, org_id: str, patient_id: str) -> list[dict]:
         items = self._session_repository.list_by_patient(org_id, patient_id)
-        mapped = [self._to_api_session(item) for item in items]
+        mapped: list[dict] = []
+        for item in items:
+            api_item = self._to_api_session(item)
+            if not api_item.get("transcription") and api_item.get("transcriptionS3Key"):
+                api_item = {
+                    **api_item,
+                    "transcription": self._load_transcription_text(org_id, item),
+                }
+            mapped.append(api_item)
         mapped.sort(key=lambda x: x.get("date", ""), reverse=True)
         return mapped
 
@@ -130,23 +163,20 @@ class SessionService:
     def session_exists(self, org_id: str, patient_id: str, session_id: str) -> bool:
         return self._session_repository.get_by_id(org_id, patient_id, session_id) is not None
 
+    def get_session(self, org_id: str, patient_id: str, session_id: str) -> dict | None:
+        item = self._session_repository.get_by_id(org_id, patient_id, session_id)
+        if item is None:
+            return None
+        return self._to_api_session(item)
+
     def get_patient_transcription(self, org_id: str, patient_id: str) -> dict | None:
         items = self._session_repository.list_by_patient(org_id, patient_id)
-        with_transcription = [item for item in items if item.get("transcription")]
+        with_transcription = [item for item in items if item.get("transcription") or item.get("transcriptionS3Key")]
         if not with_transcription:
             return None
 
         latest = sorted(with_transcription, key=lambda x: x.get("date", ""), reverse=True)[0]
-        transcription_text = latest.get("transcription")
-
-        if not transcription_text and latest.get("transcriptionS3Key"):
-            bucket = self._optional_env("TRANSCRIPTIONS_BUCKET_NAME")
-            if bucket:
-                try:
-                    response = self._s3_client.get_object(Bucket=bucket, Key=str(latest["transcriptionS3Key"]))
-                    transcription_text = response["Body"].read().decode("utf-8")
-                except Exception:
-                    transcription_text = None
+        transcription_text = self._load_transcription_text(org_id, latest)
 
         latest_plain = self._decrypt_item(latest)
         return {
@@ -176,21 +206,29 @@ class SessionService:
                 raise ValueError("TRANSCRIPTIONS_BUCKET_NAME is required when storeInS3=true")
             if not transcription_s3_key:
                 transcription_s3_key = self._build_transcription_object_key(org_id, patient_id, session_id)
+            encrypted_transcription = self._encryption_service.encrypt(org_id, transcription_text)
             self._s3_client.put_object(
                 Bucket=bucket,
                 Key=str(transcription_s3_key),
-                Body=transcription_text.encode("utf-8"),
-                ContentType="text/plain; charset=utf-8",
+                Body=encrypted_transcription.encode("utf-8"),
+                ContentType="application/json; charset=utf-8",
                 ServerSideEncryption="AES256",
             )
+            stored_transcription = ""
+            stored_transcription_s3_key = str(transcription_s3_key)
+        else:
+            stored_transcription = transcription_text
+            stored_transcription_s3_key = str(transcription_s3_key) if transcription_s3_key else ""
 
-        update_fields: dict = {
-            "transcription": transcription_text if not store_in_s3 else "",
-            "transcriptionS3Key": str(transcription_s3_key) if transcription_s3_key else "",
-            "audioS3Key": str(audio_s3_key) if audio_s3_key else "",
+        update_fields: dict[str, object] = {
+            "transcription": stored_transcription,
+            "transcriptionS3Key": stored_transcription_s3_key,
             "updatedAt": self._now_iso(),
+            "transcriptionStatus": "done",
             "encryptedContent": self._encrypt_clinical(org_id, summary, insights, tasks),
         }
+        if audio_s3_key is not None:
+            update_fields["audioS3Key"] = str(audio_s3_key)
         self._session_repository.update_fields(
             org_id,
             patient_id,
